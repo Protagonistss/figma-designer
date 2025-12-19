@@ -2,7 +2,7 @@
   "name": "designer",
   "id": "1582998088723129250",
   "api": "1.0.0",
-  "main": "dist/index.js",
+  "main": "dist/index.global.js",
   "capabilities": [],
   "enableProposedApi": false,
   "documentAccess": "dynamic-page",
