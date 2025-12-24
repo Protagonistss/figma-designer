@@ -14,7 +14,7 @@ import {
 } from '../../types/model';
 import { isContainer, findChildren, sortNodesByPosition, findOneChild } from '../parser';
 import { ProtocolManager } from '../../protocol/index';
-import { TableIntelligenceEngine, TableRecognitionConfig, TableRole } from '../../protocol/config';
+import { TableIntelligenceEngine, TableRecognitionConfig, TableRole, OperationGroupProtocol } from '../../protocol/config';
 
 import { LayoutRecognitionConfig } from '../../protocol/config';
 
@@ -42,6 +42,47 @@ export class EnhancedTableProcessor {
 
   constructor() {
     this.protocolManager = new ProtocolManager();
+  }
+
+  /**
+   * 检查是否是明确的操作列（基于名称或角色）
+   */
+  private isExplicitActionColumn(nodeNameOrNode: string | SceneNode): boolean {
+    if (typeof nodeNameOrNode === 'string') {
+        // 如果只提供了名称，尝试基于名称的快速匹配
+        const name = nodeNameOrNode;
+        // 使用 OperationGroupProtocol 的 matchers
+        return OperationGroupProtocol.matchers.some(matcher => name.toLowerCase().includes(matcher.toLowerCase()));
+    } else {
+        // 如果提供了节点，使用完整的角色识别
+        const node = nodeNameOrNode;
+        const analysis = TableIntelligenceEngine.resolveNodeRole(node);
+        if (analysis.role === 'OperationGroup' && analysis.confidence > 0.6) {
+            return true;
+        }
+        // 回退到名称匹配
+        return this.isExplicitActionColumn(node.name);
+    }
+  }
+
+  /**
+   * 检查节点是否包含真正的操作按钮
+   */
+  private hasRealActionButtons(node: SceneNode): boolean {
+    // 使用协议配置中的关键词
+    const actionKeywords: string[] = [];
+    Object.values(OperationGroupProtocol.typeMapping).forEach(keywords => {
+      actionKeywords.push(...keywords);
+    });
+    
+    const allTextNodes: TextNode[] = [];
+    this.collectTextNodes(node, allTextNodes);
+    
+    // 检查是否有文本包含操作关键词
+    return allTextNodes.some(textNode => {
+      const content = textNode.characters.trim().toLowerCase();
+      return actionKeywords.some(keyword => content.includes(keyword));
+    });
   }
 
   /**
@@ -360,34 +401,17 @@ export class EnhancedTableProcessor {
     const lowerText = text.toLowerCase();
     const lowerName = name.toLowerCase();
 
-    const actionMap: { [key: string]: string } = {
-      '查询': 'search',
-      '搜索': 'search',
-      '重置': 'reset',
-      '新增': 'add',
-      '添加': 'add',
-      '创建': 'add',
-      '编辑': 'edit',
-      '修改': 'edit',
-      '删除': 'delete',
-      '移除': 'delete',
-      '查看': 'view',
-      '显示': 'view',
-      '导出': 'export',
-      '导入': 'import',
-      '刷新': 'refresh',
-      '重新加载': 'refresh'
-    };
+    const typeMapping = OperationGroupProtocol.typeMapping;
 
-    for (const key in actionMap) {
-      if (actionMap.hasOwnProperty(key) && lowerName.includes(key)) {
-        return actionMap[key];
+    // 遍历协议配置中的映射规则
+    for (const [type, keywords] of Object.entries(typeMapping)) {
+      // 检查节点名称
+      if (keywords.some(kw => lowerName.includes(kw))) {
+        return type;
       }
-    }
-
-    for (const key in actionMap) {
-      if (actionMap.hasOwnProperty(key) && lowerText.includes(key)) {
-        return actionMap[key];
+      // 检查文本内容
+      if (keywords.some(kw => lowerText.includes(kw))) {
+        return type;
       }
     }
 
@@ -424,38 +448,110 @@ export class EnhancedTableProcessor {
   }
 
   /**
-   * 提取操作列
+   * 提取操作组 (OperationGroup)
+   * 专门用于识别和提取操作列及其按钮
    */
-  private extractActionColumns(tableColumns: TableColumn[], nodes: SceneNode[]): {
+  private extractOperationGroup(nodes: SceneNode[]): {
     column?: TableColumn;
     buttons: ActionButton[];
   } | undefined {
     const namingProtocol = this.protocolManager.getNamingProtocol();
-    const layoutProtocol = this.protocolManager.getLayoutProtocol();
 
-    const actionNodes = nodes.filter(node => 
-      namingProtocol.isActionComponent(node.name) ||
-      layoutProtocol.isActionColumn([node])
-    );
+    // 递归查找所有符合条件的操作列节点
+    const findOperationNodesRecursive = (roots: SceneNode[]): SceneNode[] => {
+        const results: SceneNode[] = [];
+        const queue = [...roots];
+        let safetyCounter = 0;
+        
+        while (queue.length > 0 && safetyCounter < 1000) {
+            safetyCounter++;
+            const node = queue.shift()!;
+            
+            if (!node.visible) continue;
+
+            const isMatch = this.isExplicitActionColumn(node);
+            let isWrapper = false;
+
+            if (isMatch) {
+                // 关键防御：检查是否误判了整个列容器（Columns Wrapper）
+                // 1. 宽度检查：操作列通常不会特别宽（除非只有一列且撑满）
+                // 如果宽度超过 400px 且包含多个子节点，很可能是容器
+                const isTooWide = node.width > 400;
+                
+                // 2. 结构检查：如果包含明确的“非操作列”子节点
+                // 比如包含 "Status", "Date" 等其他列
+                let hasOtherColumns = false;
+                if (isContainer(node)) {
+                    // @ts-ignore
+                    const children = node.children || [];
+                    // 简单的启发式检查：如果子节点数量 > 3 且宽度之和接近父容器宽度
+                    if (children.length > 3 && isTooWide) {
+                        hasOtherColumns = true;
+                    }
+                }
+
+                if (isTooWide || hasOtherColumns) {
+                    console.log(`[EnhancedTableProcessor] Node '${node.name}' matched OperationGroup but seems to be a wrapper (width: ${node.width}). Continuing recursion.`);
+                    isWrapper = true;
+                } else {
+                    results.push(node);
+                    // 找到真正的操作列后，不再深入
+                    continue;
+                }
+            }
+            
+            // 如果不是匹配项，或者是误判的容器，继续递归
+            if (!isMatch || isWrapper) {
+                if (isContainer(node)) {
+                    // @ts-ignore
+                    if (node.children) {
+                        // @ts-ignore
+                        queue.push(...node.children);
+                    }
+                }
+            }
+        }
+        return results;
+    };
+
+    // 使用递归查找操作列节点
+    const actionNodes = findOperationNodesRecursive(nodes);
+    
+    console.log(`[EnhancedTableProcessor] Found ${actionNodes.length} potential OperationGroup nodes: [${actionNodes.map(n => n.name).join(', ')}]`);
 
     if (actionNodes.length === 0) return undefined;
 
     const buttons: ActionButton[] = [];
     
     actionNodes.forEach(node => {
+      // console.log(`[EnhancedTableProcessor] Processing action node '${node.name}' (type: ${node.type})`);
       if (isContainer(node)) {
         const children = findChildren(node, n => n.visible);
+        // console.log(`[EnhancedTableProcessor] Node has ${children.length} visible children`);
         children.forEach(child => {
           const button = this.extractActionButton(child);
-          if (button) buttons.push(button);
+          if (button) {
+             // console.log(`[EnhancedTableProcessor] Extracted button: ${button.label} (${button.type}) from '${child.name}'`);
+             buttons.push(button);
+          }
         });
       } else {
         const button = this.extractActionButton(node);
-        if (button) buttons.push(button);
+        if (button) {
+            // console.log(`[EnhancedTableProcessor] Extracted button: ${button.label} (${button.type}) from '${node.name}'`);
+            buttons.push(button);
+        }
       }
     });
 
+    console.log(`[EnhancedTableProcessor] Total extracted buttons before deduplication: ${buttons.length}. Labels: [${buttons.map(b => b.label).join(', ')}]`);
+
     if (buttons.length === 0) return undefined;
+
+    // 去重操作按钮（基于key）
+    const uniqueButtons = buttons.filter((button, index, self) => 
+      index === self.findIndex(b => b.key === button.key)
+    );
 
     const actionColumn: TableColumn = {
       title: '操作',
@@ -468,7 +564,7 @@ export class EnhancedTableProcessor {
 
     return {
       column: actionColumn,
-      buttons
+      buttons: uniqueButtons
     };
   }
 
@@ -478,29 +574,69 @@ export class EnhancedTableProcessor {
   private extractActionButton(node: SceneNode): ActionButton | undefined {
     const namingProtocol = this.protocolManager.getNamingProtocol();
     
+    // 使用递归查找文本（与 extractButton 方法保持一致）
     let buttonText = '';
-    if (node.type === 'TEXT') {
-      buttonText = (node as TextNode).characters;
-    } else if (isContainer(node)) {
-      const textChild = findOneChild(node, n => n.type === 'TEXT') as TextNode;
-      if (textChild) {
-        buttonText = textChild.characters;
-      }
-    }
+    
+    const findTextRecursive = (n: SceneNode, depth: number): string => {
+        if (depth > 5) return ''; // 增加深度限制以支持更深层的嵌套
+        if (n.type === 'TEXT') {
+            const text = (n as TextNode).characters.trim();
+            if (text) return text;
+        }
+        if (isContainer(n)) {
+            // 优先找直接子节点中的文本
+            for (const child of n.children) {
+                if (child.visible) {
+                    const text = findTextRecursive(child, depth + 1);
+                    if (text) return text;
+                }
+            }
+        }
+        return '';
+    };
+
+    buttonText = findTextRecursive(node, 0);
 
     if (!buttonText) return undefined;
 
-    if (/(共|Total).*(\d+|条|rows)/i.test(buttonText) || 
-        /(第|Page).*(\d+|页)/i.test(buttonText) ||
-        /^\d+(\/\d+)?$/.test(buttonText)) {
+    // 过滤掉明显不是操作按钮的内容
+    const content = buttonText.trim().toLowerCase();
+    
+    // 1. 排除纯列名关键词（如 "操作", "Action"），这些通常是表头而不是按钮
+    const isMatcherKeyword = OperationGroupProtocol.matchers.some(m => m.toLowerCase() === content);
+    if (isMatcherKeyword) {
+        return undefined;
+    }
+
+    // 2. 排除状态标签和筛选选项（使用协议配置）
+    const excludePatterns = OperationGroupProtocol.excludePatterns;
+    
+    for (const pattern of excludePatterns) {
+      if (pattern.test(content)) {
+        return undefined;
+      }
+    }
+    
+    // 检查是否包含操作相关的关键词（使用协议配置）
+    const actionKeywords: string[] = [];
+    Object.values(OperationGroupProtocol.typeMapping).forEach(keywords => {
+      actionKeywords.push(...keywords);
+    });
+    // 额外增加列名匹配词作为辅助
+    actionKeywords.push(...OperationGroupProtocol.matchers);
+    
+    // 只要包含任何关键词就认为是操作按钮
+    const hasActionKeyword = actionKeywords.some(keyword => content.includes(keyword));
+    if (!hasActionKeyword) {
       return undefined;
     }
 
     const actionType = this.inferActionType(buttonText, node.name);
-    const validActionTypes = ['edit', 'delete', 'view', 'custom'];
+    // 从协议中获取所有有效的动作类型
+    const validActionTypes = Object.keys(OperationGroupProtocol.typeMapping);
     
     if (validActionTypes.indexOf(actionType) === -1) return undefined;
-
+    
     return {
       type: actionType as any,
       label: buttonText,
@@ -713,6 +849,14 @@ export class EnhancedTableProcessor {
                     const parentWidth = colNode.parent ? colNode.parent.width || 0 : 0;
                     if (colWidth > parentWidth * 0.8) {
                         console.log(`[EnhancedTableProcessor] Skipping overly wide column: '${title}' (width: ${colWidth}, parent: ${parentWidth})`);
+                        return;
+                    }
+                    
+                    // 检查标题是否为操作列（但只在确实有操作按钮时才过滤）
+                    // 使用协议配置进行匹配（优先检查节点本身的角色）
+                    if (this.isExplicitActionColumn(colNode) || this.isExplicitActionColumn(title)) {
+                        console.log(`[EnhancedTableProcessor] Found potential action column: '${title}' from node '${colNode.name}'`);
+                        // 先不添加到普通列中，稍后会统一处理操作列
                         return;
                     }
                     
@@ -1036,16 +1180,14 @@ export class EnhancedTableProcessor {
 
       const tableChildren = sortNodesByPosition(findChildren(tableAreaNode, n => n.visible));
       
-      // 提取操作列
-      const actionResult = this.extractActionColumns(columns, tableChildren);
-      if (actionResult) {
-        if (actionResult.column) {
-          // 检查是否已经有操作列，避免重复
-          const hasActionColumn = columns.some(col => col.dataIndex === 'actions');
-          if (!hasActionColumn) {
-            columns.push(actionResult.column);
-          }
-        }
+      // 提取操作列 (OperationGroup) - 确保只生成一个操作列
+      const actionResult = this.extractOperationGroup(tableChildren);
+      
+      // 移除所有已存在的操作列（避免重复，操作列只保留在 actionColumn 中）
+      columns = columns.filter(col => col.dataIndex !== 'actions');
+      
+      // 如果找到了操作列，只保存按钮信息，不添加到 columns 中
+      if (actionResult && actionResult.buttons.length > 0) {
         actionButtons = actionResult.buttons;
       }
     } else {

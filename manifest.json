@@ -12,6 +12,10 @@
   "networkAccess": {
     "allowedDomains": [
       "none"
-    ]
+    ],
+    "devAllowedDomains": [
+      "http://localhost:7242"
+    ],
+    "reasoning": "Debug logging to local development server"
   }
 }

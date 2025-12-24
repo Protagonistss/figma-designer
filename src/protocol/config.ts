@@ -9,7 +9,8 @@ export type TableRole =
   | 'SearchArea' 
   | 'ActionGroup' 
   | 'DataGrid' 
-  | 'PaginationBar';
+  | 'PaginationBar'
+  | 'OperationGroup';
 
 // 2. 结构定义 (Structure Definition)
 export const TableStructure = {
@@ -17,7 +18,8 @@ export const TableStructure = {
   // 层级关系定义
   hierarchy: {
     'TableContainer': ['HeaderArea', 'BodyArea'],
-    'BodyArea': ['SearchArea', 'ActionGroup', 'DataGrid', 'PaginationBar']
+    'BodyArea': ['SearchArea', 'ActionGroup', 'DataGrid', 'PaginationBar'],
+    'DataGrid': ['OperationGroup']
   } as Record<string, string[]>,
   
   // 必须存在的组件 (用于完整性校验)
@@ -53,7 +55,7 @@ export const NodeNameMatchers: Record<TableRole, {
     weight: 0.9
   },
   'ActionGroup': {
-    keywords: ['actions', 'buttonGroup', 'tools', 'toolbar', 'buttons', 'operations', '工具栏', '操作', '按钮组'],
+    keywords: ['actions', 'buttonGroup', 'tools', 'toolbar', 'buttons', '工具栏', '按钮组'],
     patterns: [/action.*/i, /tool.*bar/i, /button.*group/i],
     weight: 0.85
   },
@@ -66,6 +68,11 @@ export const NodeNameMatchers: Record<TableRole, {
   'PaginationBar': {
     keywords: ['pagination', 'pager', 'footer', 'page-control', '分页', '翻页', '页码'],
     patterns: [/page.*/i, /pagination.*/i],
+    weight: 0.9
+  },
+  'OperationGroup': {
+    keywords: ['操作', 'operations', 'columns'],
+    patterns: [/operation.*/i],
     weight: 0.9
   }
 };
@@ -230,6 +237,34 @@ export const NamingConventionConfig = {
     container: ['container', 'wrapper', 'box', 'area', '容器', '区域'],
     content: ['content', 'body', 'main', '内容', '主体']
   }
+};
+
+export const OperationGroupProtocol = {
+  // 识别操作列/操作组本身的关键词
+  matchers: ['操作', 'action', 'operation', 'opt', 'manage', '管理'],
+  
+  // 动作类型映射 (关键词 -> 动作类型)
+  // 处理器会将按钮文本与这些关键词匹配，决定 type
+  typeMapping: {
+    edit: ['edit', 'modify', 'update', '编辑', '修改', '审核', '通过', '批准', 'approve', 'pass'],
+    delete: ['delete', 'remove', 'destroy', 'cancel', 'reject', 'void', '删除', '移除', '作废', '驳回', '拒绝', '禁用', 'disable'],
+    add: ['add', 'create', 'new', 'insert', 'activate', 'enable', '新增', '添加', '创建', '激活', '启用'],
+    view: ['view', 'detail', 'show', 'info', '查看', '详情', '显示'],
+    export: ['export', 'download', '导出', '下载'],
+    import: ['import', 'upload', '导入', '上传'],
+    refresh: ['refresh', 'reload', '刷新', '重置', 'reset'],
+    search: ['search', 'query', 'find', '搜索', '查询'],
+    custom: ['confirm', 'submit', '确认', '提交', 'save', '保存']
+  },
+
+  // 排除规则：匹配这些正则的文本不应被识别为按钮
+  excludePatterns: [
+    /^(状态|待审核|审核中|已审核|全部|共|第|page)/i, // 纯状态描述
+    /^(共|Total).*(\d+|条|rows)/i, // 统计信息
+    /^(第|Page).*(\d+|页)/i, // 分页信息
+    /^\d+(\.\d+)?$/, // 纯数字
+    /^.{25,}/ // 过长文本
+  ]
 };
 
 export const LayoutRecognitionConfig = {
