@@ -14,9 +14,8 @@ import {
 } from '../../types/model';
 import { isContainer, findChildren, sortNodesByPosition, findOneChild } from '../parser';
 import { ProtocolManager } from '../../protocol/index';
-import { TableIntelligenceEngine, TableRecognitionConfig, TableRole, OperationGroupProtocol } from '../../protocol/config';
-
-import { LayoutRecognitionConfig } from '../../protocol/config';
+import { TableRole, SemanticDictionary, ExclusionPatterns } from '../../protocol/config';
+import { IntelligenceEngine, TableIntelligenceEngine } from '../../protocol/intelligence';
 
 // Debug helper
 function logNodeStructure(node: SceneNode, depth: number = 0): void {
@@ -39,9 +38,11 @@ function logNodeStructure(node: SceneNode, depth: number = 0): void {
  */
 export class EnhancedTableProcessor {
   private protocolManager: ProtocolManager;
+  private intelligenceEngine: IntelligenceEngine;
 
   constructor() {
     this.protocolManager = new ProtocolManager();
+    this.intelligenceEngine = new IntelligenceEngine();
   }
 
   /**
@@ -51,12 +52,12 @@ export class EnhancedTableProcessor {
     if (typeof nodeNameOrNode === 'string') {
         // 如果只提供了名称，尝试基于名称的快速匹配
         const name = nodeNameOrNode;
-        // 使用 OperationGroupProtocol 的 matchers
-        return OperationGroupProtocol.matchers.some(matcher => name.toLowerCase().includes(matcher.toLowerCase()));
+        // 使用 SemanticDictionary.operations 的 matchers
+        return SemanticDictionary.operations.matchers.some(matcher => name.toLowerCase().includes(matcher.toLowerCase()));
     } else {
         // 如果提供了节点，使用完整的角色识别
         const node = nodeNameOrNode;
-        const analysis = TableIntelligenceEngine.resolveNodeRole(node);
+        const analysis = this.intelligenceEngine.resolveNodeRole(node);
         if (analysis.role === 'OperationGroup' && analysis.confidence > 0.6) {
             return true;
         }
@@ -69,19 +70,13 @@ export class EnhancedTableProcessor {
    * 检查节点是否包含真正的操作按钮
    */
   private hasRealActionButtons(node: SceneNode): boolean {
-    // 使用协议配置中的关键词
-    const actionKeywords: string[] = [];
-    Object.values(OperationGroupProtocol.typeMapping).forEach(keywords => {
-      actionKeywords.push(...keywords);
-    });
-    
     const allTextNodes: TextNode[] = [];
     this.collectTextNodes(node, allTextNodes);
     
     // 检查是否有文本包含操作关键词
     return allTextNodes.some(textNode => {
-      const content = textNode.characters.trim().toLowerCase();
-      return actionKeywords.some(keyword => content.includes(keyword));
+      const content = textNode.characters.trim();
+      return this.intelligenceEngine.hasActionKeyword(content);
     });
   }
 
@@ -282,16 +277,17 @@ export class EnhancedTableProcessor {
     let depth = 0;
     
     // 广度优先搜索，寻找按钮或文本
-    while (queue.length > 0 && depth < 4) {
+    while (queue.length > 0 && depth < 5) {
         const currentLevelNodes = [...queue];
         queue.length = 0; // 清空队列，准备下一层
         
         let hasButtons = false;
 
         for (const node of currentLevelNodes) {
-            // 检查是否是按钮
-            const isButton = namingProtocol.isButtonComponent(node.name) || 
-                             this.extractButton(node, type) !== undefined;
+            // 检查是否是按钮（只基于名称，不调用 extractButton 避免容器被误判）
+            // 排除明显的容器关键词
+            const isContainerName = /组|group|container|wrapper|容器/i.test(node.name);
+            const isButton = !isContainerName && namingProtocol.isButtonComponent(node.name);
             
             if (isButton) {
                 candidates.push(node);
@@ -299,19 +295,58 @@ export class EnhancedTableProcessor {
             } else if (isContainer(node)) {
                 // 如果不是按钮，继续深入
                 queue.push(...findChildren(node, n => n.visible));
+            } else if (node.type === 'TEXT') {
+                // 如果是文本节点，检查其父节点是否可能是按钮
+                // 这种情况通常发生在按钮结构是：Button -> Text 的情况
+                const parent = (node as any).parent;
+                if (parent && !candidates.includes(parent)) {
+                    // 检查父节点是否包含按钮特征（有文本且有合理的尺寸）
+                    const hasReasonableSize = parent.width > 40 && parent.height > 20 && parent.height < 100;
+                    if (hasReasonableSize) {
+                        candidates.push(parent);
+                        hasButtons = true;
+                    }
+                }
             }
         }
         
-        // 改进逻辑：如果找到了按钮，我们仍然可以继续查找同级或更深层的按钮
-        // 除非我们确定这些按钮构成了完整的组
-        // 这里简化为：如果找到了多个按钮，就停止深入；否则继续尝试找更多
-        if (hasButtons && candidates.length > 1) {
-            // 如果已经找到多个按钮，可能就是这一层了
-            // 但也有可能这层只有几个，还有更多在其他分支
-            // 为了安全起见，这里不break，而是通过depth控制
-        }
-        
+        // 如果找到了按钮，继续查找同级按钮（不立即停止）
         depth++;
+    }
+    
+    // 如果通过名称匹配没找到按钮，尝试查找所有包含文本的叶子节点作为候选
+    if (candidates.length === 0) {
+        // 重新搜索，这次查找所有包含文本的容器节点
+        const textBasedQueue = [...nodes];
+        const textBasedDepth = 0;
+        const maxDepth = 5;
+        
+        const findTextBasedButtons = (nodeList: SceneNode[], currentDepth: number): void => {
+            if (currentDepth > maxDepth) return;
+            
+            for (const node of nodeList) {
+                const isContainerName = /组|group|container|wrapper|容器/i.test(node.name);
+                if (isContainerName) {
+                    // 跳过容器，继续深入
+                    if (isContainer(node)) {
+                        findTextBasedButtons(findChildren(node, n => n.visible), currentDepth + 1);
+                    }
+                } else {
+                    // 检查节点是否包含文本且尺寸合理（可能是按钮）
+                    const hasText = this.hasTextContent(node);
+                    const hasReasonableSize = node.width > 40 && node.height > 20 && node.height < 100;
+                    if (hasText && hasReasonableSize && !candidates.includes(node)) {
+                        candidates.push(node);
+                    }
+                    // 继续深入查找
+                    if (isContainer(node)) {
+                        findTextBasedButtons(findChildren(node, n => n.visible), currentDepth + 1);
+                    }
+                }
+            }
+        };
+        
+        findTextBasedButtons(textBasedQueue, textBasedDepth);
     }
     
     if (candidates.length === 0) return undefined;
@@ -334,7 +369,64 @@ export class EnhancedTableProcessor {
         }
     });
 
-    if (allButtons.length === 0) return undefined;
+    if (allButtons.length === 0) {
+        // 如果所有按钮文本提取都失败，但确实找到了按钮节点，尝试使用节点名称作为回退
+        if (targetButtons.length > 0 && type === 'toolbar') {
+            // 为每个按钮节点创建一个按钮
+            // 即使节点名称是 "按钮"，也创建按钮，使用索引或位置作为标签
+            const fallbackButtons: ToolbarButton[] = [];
+            for (let i = 0; i < targetButtons.length; i++) {
+                const btnNode = targetButtons[i];
+                const nodeName = btnNode.name.trim();
+                let buttonLabel = '';
+                
+                // 尝试从节点名称获取标签
+                if (nodeName && nodeName !== '按钮' && nodeName !== 'button' && nodeName.length > 1) {
+                    buttonLabel = nodeName;
+                } else {
+                    // 如果节点名称是通用名称，尝试从实例覆盖或其他方式获取
+                    // 或者使用默认标签
+                    if (btnNode.type === 'INSTANCE') {
+                        const instance = btnNode as InstanceNode;
+                        // 检查实例覆盖
+                        const overrides = (instance as any).overrides || {};
+                        for (const [overrideId, override] of Object.entries(overrides)) {
+                            if (typeof override === 'string' && (override as string).trim()) {
+                                const trimmed = (override as string).trim();
+                                // 即使覆盖值是 "文字"，也使用它（至少比没有好）
+                                if (trimmed.length > 0) {
+                                    buttonLabel = trimmed;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 如果仍然没有标签，使用默认标签
+                    if (!buttonLabel) {
+                        buttonLabel = `按钮${i + 1}`;
+                    }
+                }
+                
+                const actionType = this.inferActionType(buttonLabel, nodeName, 'toolbar');
+                fallbackButtons.push({
+                    type: actionType as any,
+                    label: buttonLabel,
+                    key: this.generateFieldKey(buttonLabel)
+                });
+            }
+            
+            if (fallbackButtons.length > 0) {
+                return {
+                    type,
+                    buttons: fallbackButtons,
+                    layout: this.inferButtonLayout(targetButtons),
+                    align: this.inferButtonAlign(targetButtons)
+                };
+            }
+        }
+        return undefined;
+    }
 
     return {
       type,
@@ -350,27 +442,254 @@ export class EnhancedTableProcessor {
   private extractButton(node: SceneNode, context: 'search' | 'toolbar'): ToolbarButton | ActionButton | undefined {
     const namingProtocol = this.protocolManager.getNamingProtocol();
     
-    // 增强文本提取逻辑：递归查找文本
-    let buttonText = '';
+    // 排除明显的容器节点（不应该作为按钮处理）
+    const isContainerName = /组|group|container|wrapper|容器|按钮组|buttonGroup/i.test(node.name);
+    if (isContainerName && isContainer(node)) {
+      return undefined;
+    }
     
-    const findTextRecursive = (n: SceneNode, depth: number): string => {
-        if (depth > 3) return '';
-        if (n.type === 'TEXT') return n.characters;
+    // 增强文本提取逻辑：收集所有文本节点，然后选择最合适的
+    const allTextNodes: Array<{text: string, depth: number, nodeName: string}> = [];
+    
+    const collectTextRecursive = (n: SceneNode, depth: number): void => {
+        if (depth > 20) return; // 进一步增加深度限制以支持非常深的嵌套
+        if (n.type === 'TEXT') {
+            const text = (n as TextNode).characters.trim();
+            if (text) {
+                allTextNodes.push({text, depth, nodeName: n.name});
+            }
+        }
         if (isContainer(n)) {
-            // 优先找直接子节点中的文本
-            for (const child of n.children) {
-                if (child.visible) {
-                    const text = findTextRecursive(child, depth + 1);
-                    if (text) return text;
+            // 确保能访问所有子节点（包括实例的子节点）
+            const children = 'children' in n ? n.children : [];
+            for (const child of children) {
+                // 对于 toolbar 上下文，遍历所有子节点（包括不可见的），因为实际文本可能在隐藏的节点中
+                if (context === 'toolbar') {
+                    // 对于 toolbar，遍历所有子节点，不管是否可见
+                    collectTextRecursive(child, depth + 1);
+                } else if (child.visible) {
+                    collectTextRecursive(child, depth + 1);
+                } else if (child.type === 'TEXT' && depth <= 3) {
+                    // 对于其他上下文，也检查不可见的文本节点（可能是被隐藏的实际文本）
+                    const text = (child as TextNode).characters.trim();
+                    if (text && !/^文字$|^text$/i.test(text)) {
+                        allTextNodes.push({text, depth: depth + 1, nodeName: child.name});
+                    }
                 }
             }
         }
-        return '';
     };
 
-    buttonText = findTextRecursive(node, 0);
+    collectTextRecursive(node, 0);
 
-    if (!buttonText) return undefined;
+    // 对于 INSTANCE 节点，尝试访问主组件获取文本
+    if (node.type === 'INSTANCE') {
+        const instance = node as InstanceNode;
+        
+        // 首先检查组件属性（component properties）- Figma 的新功能
+        if (instance.componentProperties) {
+            // 遍历组件属性，查找文本属性
+            for (const [propKey, propValue] of Object.entries(instance.componentProperties)) {
+                // 只处理文本相关属性
+                if (!/文字|内容|text|content|label|标签/i.test(propKey)) {
+                    continue;
+                }
+                
+                let textValue: string | null = null;
+                
+                // 组件属性可能是字符串，也可能是对象（包含 value 字段）
+                if (typeof propValue === 'string') {
+                    textValue = propValue;
+                } else if (propValue && typeof propValue === 'object') {
+                    // 递归函数：深度提取文本值
+                    const extractTextFromValue = (obj: any, maxDepth: number = 5): string | null => {
+                        if (maxDepth <= 0) return null;
+                        
+                        // 如果是字符串，直接返回
+                        if (typeof obj === 'string') {
+                            return obj;
+                        }
+                        
+                        // 如果是对象，尝试多种字段
+                        if (obj && typeof obj === 'object') {
+                            // 优先检查 characters（TextNode）
+                            if ('characters' in obj && typeof obj.characters === 'string') {
+                                return obj.characters;
+                            }
+                            
+                            // 检查 value 字段
+                            if ('value' in obj) {
+                                const val = obj.value;
+                                if (typeof val === 'string') {
+                                    return val;
+                                } else if (val && typeof val === 'object') {
+                                    // 递归提取
+                                    const nested = extractTextFromValue(val, maxDepth - 1);
+                                    if (nested) return nested;
+                                }
+                            }
+                            
+                            // 检查其他可能的字段
+                            for (const key of ['text', 'content', 'label', '文字', '内容']) {
+                                if (key in obj) {
+                                    const nested = extractTextFromValue(obj[key], maxDepth - 1);
+                                    if (nested) return nested;
+                                }
+                            }
+                        }
+                        
+                        return null;
+                    };
+                    
+                    textValue = extractTextFromValue(propValue) || String(propValue);
+                }
+                
+                if (textValue && textValue.trim()) {
+                    const trimmed = textValue.trim();
+                    
+                    // 排除占位符、布尔值、图标ID、样式值
+                    const isNotPlaceholder = !/^文字$|^text$|^label$/i.test(trimmed);
+                    const isNotBoolean = trimmed !== 'true' && trimmed !== 'false';
+                    const isNotIconId = !/^\d+:\d+$/.test(trimmed); // 排除图标ID如 "1:314"
+                    const isNotStyleValue = !/^大$|^小$|^主要$|^次要$|^默认$|^hover$|^disabled$/i.test(trimmed);
+                    
+                    if (isNotPlaceholder && isNotBoolean && isNotIconId && isNotStyleValue) {
+                        allTextNodes.push({text: trimmed, depth: 0, nodeName: `property:${propKey}`});
+                    }
+                }
+            }
+        }
+        
+        // 检查是否有实例覆盖（instance overrides）
+        // 注意：实例覆盖可能覆盖了组件属性的值，需要检查覆盖中是否有文本节点的覆盖
+        if (instance.overrides && Object.keys(instance.overrides).length > 0) {
+            // 遍历覆盖，查找文本覆盖
+            for (const [overrideId, override] of Object.entries(instance.overrides as any)) {
+                let textValue: string | null = null;
+                
+                // 覆盖可能是字符串，也可能是对象
+                if (typeof override === 'string') {
+                    textValue = override;
+                } else if (override && typeof override === 'object') {
+                    // 使用递归函数提取文本值
+                    const extractTextFromOverride = (obj: any, maxDepth: number = 5): string | null => {
+                        if (maxDepth <= 0) return null;
+                        
+                        if (typeof obj === 'string') {
+                            return obj;
+                        }
+                        
+                        if (obj && typeof obj === 'object') {
+                            // 优先检查 characters（TextNode）
+                            if ('characters' in obj && typeof obj.characters === 'string') {
+                                return obj.characters;
+                            }
+                            
+                            // 检查 value 字段
+                            if ('value' in obj) {
+                                const val = obj.value;
+                                if (typeof val === 'string') {
+                                    return val;
+                                } else if (val && typeof val === 'object') {
+                                    const nested = extractTextFromOverride(val, maxDepth - 1);
+                                    if (nested) return nested;
+                                }
+                            }
+                            
+                            // 检查其他可能的字段
+                            for (const key of ['text', 'content', 'label', '文字', '内容']) {
+                                if (key in obj) {
+                                    const nested = extractTextFromOverride(obj[key], maxDepth - 1);
+                                    if (nested) return nested;
+                                }
+                            }
+                        }
+                        
+                        return null;
+                    };
+                    
+                    textValue = extractTextFromOverride(override);
+                }
+                
+                if (textValue && (textValue as string).trim()) {
+                    const trimmed = (textValue as string).trim();
+                    if (trimmed !== '文字' && trimmed !== 'text') {
+                        allTextNodes.push({text: trimmed, depth: 0, nodeName: `override:${overrideId}`});
+                    }
+                }
+            }
+        }
+        
+        // 注意：在 dynamic-page 权限下，不能直接访问 mainComponent
+        // 如果需要访问主组件，需要使用 getMainComponentAsync()，但这里我们跳过主组件访问
+        // 因为我们已经有了实例覆盖的回退策略
+    }
+
+    // 选择最合适的文本节点
+    // 优先级：1. 排除占位符文本（如 "文字"） 2. 较长的文本（通常是按钮标签） 3. 不是单个字符或图标符号
+    let buttonText = '';
+    if (allTextNodes.length > 0) {
+        // 过滤掉明显的占位符和图标文本
+        const filtered = allTextNodes.filter(t => {
+            const text = t.text;
+            const isPlaceholder = /^文字$|^text$|^label$|^placeholder$/i.test(text) || // 占位符
+                                 text.length <= 1 || 
+                                 /^[\u{1F300}-\u{1F9FF}]$/u.test(text) || // emoji
+                                 /icon|图标/i.test(t.nodeName);
+            return !isPlaceholder;
+        });
+
+        if (filtered.length > 0) {
+            // 选择最长的文本（通常是按钮标签）
+            buttonText = filtered.reduce((best, current) => 
+                current.text.length > best.text.length ? current : best
+            ).text;
+        } else {
+            // 如果所有文本都被过滤掉了（都是占位符），尝试从实例覆盖获取
+            
+            // 对于 INSTANCE 节点，尝试从实例覆盖获取文本
+            if (node.type === 'INSTANCE') {
+                const instance = node as InstanceNode;
+                // 检查实例覆盖中的文本节点
+                const overrideTexts: string[] = [];
+                const overrides = (instance as any).overrides || {};
+                for (const [overrideId, override] of Object.entries(overrides)) {
+                    if (typeof override === 'string' && (override as string).trim()) {
+                        const trimmed = (override as string).trim();
+                        // 对于 toolbar 上下文，即使覆盖值是占位符也使用（至少比没有好）
+                        if (context === 'toolbar') {
+                            overrideTexts.push(trimmed);
+                        } else if (!/^文字$|^text$|^label$|^placeholder$/i.test(trimmed)) {
+                            // 对于其他上下文，排除占位符
+                            overrideTexts.push(trimmed);
+                        }
+                    }
+                }
+                if (overrideTexts.length > 0) {
+                    buttonText = overrideTexts[0]; // 使用第一个覆盖文本
+                } else {
+                    // 如果实例覆盖也没有文本，对于 toolbar 上下文，使用原始文本（即使是占位符）
+                    // 注意：在 dynamic-page 权限下，不能直接访问 mainComponent
+                    if (context === 'toolbar' && allTextNodes.length > 0) {
+                        buttonText = allTextNodes[0].text;
+                    } else {
+                        return undefined;
+                    }
+                }
+            } else {
+                // 对于 non-INSTANCE 节点，对于 toolbar context，使用 raw text
+                if (context === 'toolbar' && allTextNodes.length > 0) {
+                    buttonText = allTextNodes[0].text;
+                } else {
+                    return undefined;
+                }
+            }
+        }
+    }
+
+    if (!buttonText) {
+        return undefined;
+    }
 
     if (context === 'search') {
       return {
@@ -379,14 +698,14 @@ export class EnhancedTableProcessor {
         key: this.generateFieldKey(buttonText)
       } as ToolbarButton;
     } else {
-      const actionType = this.inferActionType(buttonText, node.name);
-      const validActionTypes = ['edit', 'delete', 'view', 'add', 'export', 'import', 'refresh', 'custom'];
+      // toolbar context uses action type inference
+      const actionType = this.inferActionType(buttonText, node.name, 'toolbar');
+      const validActionTypes = ['add', 'export', 'import', 'refresh', 'custom'];
       if (validActionTypes.indexOf(actionType) !== -1) {
         return {
           type: actionType as any,
           label: buttonText,
-          key: this.generateFieldKey(buttonText),
-          danger: actionType === 'delete'
+          key: this.generateFieldKey(buttonText)
         } as ToolbarButton;
       }
     }
@@ -396,26 +715,14 @@ export class EnhancedTableProcessor {
 
   /**
    * 推断动作类型
+   * 根据上下文（toolbar 或 operations）使用不同的推断逻辑
    */
-  private inferActionType(text: string, name: string): string {
-    const lowerText = text.toLowerCase();
-    const lowerName = name.toLowerCase();
-
-    const typeMapping = OperationGroupProtocol.typeMapping;
-
-    // 遍历协议配置中的映射规则
-    for (const [type, keywords] of Object.entries(typeMapping)) {
-      // 检查节点名称
-      if (keywords.some(kw => lowerName.includes(kw))) {
-        return type;
-      }
-      // 检查文本内容
-      if (keywords.some(kw => lowerText.includes(kw))) {
-        return type;
-      }
+  private inferActionType(text: string, name: string, context: 'toolbar' | 'operations' = 'operations'): string {
+    if (context === 'toolbar') {
+      return this.intelligenceEngine.inferToolbarAction(text, name);
+    } else {
+      return this.intelligenceEngine.inferRowAction(text, name);
     }
-
-    return 'custom';
   }
 
   /**
@@ -602,38 +909,20 @@ export class EnhancedTableProcessor {
     // 过滤掉明显不是操作按钮的内容
     const content = buttonText.trim().toLowerCase();
     
-    // 1. 排除纯列名关键词（如 "操作", "Action"），这些通常是表头而不是按钮
-    const isMatcherKeyword = OperationGroupProtocol.matchers.some(m => m.toLowerCase() === content);
-    if (isMatcherKeyword) {
-        return undefined;
-    }
-
-    // 2. 排除状态标签和筛选选项（使用协议配置）
-    const excludePatterns = OperationGroupProtocol.excludePatterns;
-    
-    for (const pattern of excludePatterns) {
-      if (pattern.test(content)) {
-        return undefined;
-      }
+    // 1. 检查是否应该被排除
+    if (this.intelligenceEngine.shouldExclude(buttonText)) {
+      return undefined;
     }
     
-    // 检查是否包含操作相关的关键词（使用协议配置）
-    const actionKeywords: string[] = [];
-    Object.values(OperationGroupProtocol.typeMapping).forEach(keywords => {
-      actionKeywords.push(...keywords);
-    });
-    // 额外增加列名匹配词作为辅助
-    actionKeywords.push(...OperationGroupProtocol.matchers);
-    
-    // 只要包含任何关键词就认为是操作按钮
-    const hasActionKeyword = actionKeywords.some(keyword => content.includes(keyword));
-    if (!hasActionKeyword) {
+    // 2. 检查是否包含操作相关的关键词
+    if (!this.intelligenceEngine.hasActionKeyword(buttonText)) {
       return undefined;
     }
 
-    const actionType = this.inferActionType(buttonText, node.name);
-    // 从协议中获取所有有效的动作类型
-    const validActionTypes = Object.keys(OperationGroupProtocol.typeMapping);
+    // 3. 推断动作类型（使用 operations 上下文）
+    const actionType = this.inferActionType(buttonText, node.name, 'operations');
+    // 有效的操作列动作类型
+    const validActionTypes = ['edit', 'delete', 'view', 'custom'];
     
     if (validActionTypes.indexOf(actionType) === -1) return undefined;
     
@@ -695,7 +984,8 @@ export class EnhancedTableProcessor {
     const containerCenterX = container.x + container.width / 2;
     const diff = Math.abs(textCenterX - containerCenterX);
 
-    if (diff < LayoutRecognitionConfig.associationRules.alignmentThreshold / 2) return 'center';
+    // 使用硬编码的阈值（5px / 2 = 2.5px）
+    if (diff < 2.5) return 'center';
     if (textCenterX < containerCenterX) return 'left';
     return 'right';
   }
@@ -845,8 +1135,8 @@ export class EnhancedTableProcessor {
                     seenTitles.add(title);
                     
                     // 过滤掉过于宽泛的标题（可能是整个容器）
-                    const colWidth = colNode.width || 0;
-                    const parentWidth = colNode.parent ? colNode.parent.width || 0 : 0;
+                    const colWidth = (colNode as any).width || 0;
+                    const parentWidth = (colNode.parent && 'width' in colNode.parent) ? (colNode.parent as any).width : 0;
                     if (colWidth > parentWidth * 0.8) {
                         console.log(`[EnhancedTableProcessor] Skipping overly wide column: '${title}' (width: ${colWidth}, parent: ${parentWidth})`);
                         return;
@@ -1037,6 +1327,23 @@ export class EnhancedTableProcessor {
   }
 
   /**
+   * 检查节点是否包含文本内容
+   */
+  private hasTextContent(node: SceneNode): boolean {
+    if (node.type === 'TEXT') {
+      return (node as TextNode).characters.trim().length > 0;
+    }
+    if (isContainer(node)) {
+      for (const child of node.children) {
+        if (this.hasTextContent(child)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * 按Y坐标将文本节点分组为行
    */
   private groupTextsByRow(textNodes: TextNode[]): TextNode[][] {
@@ -1081,24 +1388,35 @@ export class EnhancedTableProcessor {
     // 广度优先搜索，优先找浅层的
     const queue = [root];
     const visited = new Set<string>(); // 防止循环引用
+    const candidates: SceneNode[] = [];
     
     while (queue.length > 0) {
         const node = queue.shift()!;
         if (visited.has(node.id)) continue;
         visited.add(node.id);
 
-        const analysis = TableIntelligenceEngine.resolveNodeRole(node);
+        const analysis = this.intelligenceEngine.resolveNodeRole(node);
+        
+        // 发现匹配角色
         if (analysis.role === role && analysis.confidence > 0.6) {
-            return node;
+            // 优先返回可见节点
+            if (node.visible) {
+                return node;
+            } else {
+                candidates.push(node);
+            }
         }
 
         if (isContainer(node)) {
+            // 对于搜索组件，如果节点不可见，其子节点通常也不应该被搜索（除非是 root）
+            // 但为了安全，我们仍然搜索子节点，只是增加记录
             // @ts-ignore - TS issue with children types
             queue.push(...node.children);
         }
     }
     
-    return null;
+    // 如果没有可见的匹配项，返回第一个找到的（即使不可见）作为最后手段
+    return candidates.length > 0 ? candidates[0] : null;
   }
 
   /**
@@ -1174,7 +1492,8 @@ export class EnhancedTableProcessor {
       // 但 findComponentByRole(node, 'ActionGroup') 会遍历整个 node 树，所以没问题
       const actionGroupNode = this.findComponentByRole(node, 'ActionGroup');
       if (actionGroupNode) {
-          console.log(`[EnhancedTableProcessor] Found Action Group: ${actionGroupNode.name}`);
+          console.log(`[EnhancedTableProcessor] Found Action Group: ${actionGroupNode.name} (visible: ${actionGroupNode.visible})`);
+          
           toolbarRight = this.extractButtonGroup([actionGroupNode], 'toolbar');
       }
 

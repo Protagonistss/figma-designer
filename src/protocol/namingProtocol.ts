@@ -1,11 +1,12 @@
-import { NamingConventionConfig, ParserConfig } from './config';
+// 命名约定协议处理器 - 基于统一语义词典
+import { SemanticDictionary, ParserConfig } from './config';
 
 /**
  * 命名约定协议处理器
  * 负责根据命名模式识别不同类型的组件和区域
+ * 重构后：基于统一语义词典进行识别
  */
 export class NamingProtocolHandler {
-  private config = NamingConventionConfig;
   private debug = ParserConfig.debug;
 
   /**
@@ -13,20 +14,17 @@ export class NamingProtocolHandler {
    */
   private matchesPattern(name: string, patterns: string[]): boolean {
     if (!name) return false;
-    
-    const normalizedName = this.config.common.caseSensitive ? name : name.toLowerCase();
-    
-    return patterns.some(pattern => {
-      const normalizedPattern = this.config.common.caseSensitive ? pattern : pattern.toLowerCase();
-      return normalizedName.includes(normalizedPattern);
-    });
+    const normalizedName = name.toLowerCase();
+    return patterns.some(pattern => 
+      normalizedName.includes(pattern.toLowerCase())
+    );
   }
 
   /**
-   * 检查是否为通用搜索区域
+   * 检查是否为搜索区域
    */
   isSearchArea(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.common.searchPatterns);
+    const result = this.matchesPattern(name, SemanticDictionary.search.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isSearchArea: "${name}" -> ${result}`);
     }
@@ -34,21 +32,17 @@ export class NamingProtocolHandler {
   }
 
   /**
-   * 检查是否为表格专用搜索区域
+   * 检查是否为表格专用搜索区域（向后兼容）
    */
   isTableSearchArea(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.top.search);
-    if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
-      console.log(`[NamingProtocol] isTableSearchArea: "${name}" -> ${result}`);
-    }
-    return result;
+    return this.isSearchArea(name);
   }
 
   /**
    * 检查是否为表格区域
    */
   isTableArea(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.keywords);
+    const result = this.matchesPattern(name, SemanticDictionary.grid.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isTableArea: "${name}" -> ${result}`);
     }
@@ -59,7 +53,9 @@ export class NamingProtocolHandler {
    * 检查是否为表格行
    */
   isTableRow(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.tableContent.row);
+    // 保留原有逻辑，但简化关键词
+    const rowKeywords = ['row', 'tr', 'record', '行', '记录'];
+    const result = this.matchesPattern(name, rowKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isTableRow: "${name}" -> ${result}`);
     }
@@ -70,7 +66,8 @@ export class NamingProtocolHandler {
    * 检查是否为表格列/单元格
    */
   isTableColumn(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.tableContent.cell);
+    const cellKeywords = ['cell', 'td', 'col', 'column', '列', '单元格'];
+    const result = this.matchesPattern(name, cellKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isTableColumn: "${name}" -> ${result}`);
     }
@@ -81,7 +78,8 @@ export class NamingProtocolHandler {
    * 检查是否为输入组件
    */
   isInputComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.form.input);
+    const inputKeywords = ['input', 'text', 'field', '输入框'];
+    const result = this.matchesPattern(name, inputKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isInputComponent: "${name}" -> ${result}`);
     }
@@ -92,7 +90,8 @@ export class NamingProtocolHandler {
    * 检查是否为选择组件
    */
   isSelectComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.form.select);
+    const selectKeywords = ['select', 'dropdown', 'picker', '选择器', '下拉'];
+    const result = this.matchesPattern(name, selectKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isSelectComponent: "${name}" -> ${result}`);
     }
@@ -103,7 +102,8 @@ export class NamingProtocolHandler {
    * 检查是否为日期组件
    */
   isDateComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.form.date);
+    const dateKeywords = ['date', 'time', 'calendar', '日期', '时间'];
+    const result = this.matchesPattern(name, dateKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isDateComponent: "${name}" -> ${result}`);
     }
@@ -114,7 +114,8 @@ export class NamingProtocolHandler {
    * 检查是否为按钮组件
    */
   isButtonComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.form.button);
+    const buttonKeywords = ['button', 'btn', '按钮', '页面切换'];
+    const result = this.matchesPattern(name, buttonKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isButtonComponent: "${name}" -> ${result}`);
     }
@@ -125,7 +126,8 @@ export class NamingProtocolHandler {
    * 检查是否为容器组件
    */
   isContainerComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.layout.container);
+    const containerKeywords = ['container', 'wrapper', 'box', 'area', '容器', '区域'];
+    const result = this.matchesPattern(name, containerKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isContainerComponent: "${name}" -> ${result}`);
     }
@@ -136,7 +138,8 @@ export class NamingProtocolHandler {
    * 检查是否为表头组件 (表格列头)
    */
   isHeaderComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.tableContent.header);
+    const headerKeywords = ['header', 'th', '表头'];
+    const result = this.matchesPattern(name, headerKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isHeaderComponent: "${name}" -> ${result}`);
     }
@@ -147,7 +150,8 @@ export class NamingProtocolHandler {
    * 检查是否为内容区域
    */
   isContentArea(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.layout.content);
+    const contentKeywords = ['content', 'body', 'main', '内容', '主体'];
+    const result = this.matchesPattern(name, contentKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isContentArea: "${name}" -> ${result}`);
     }
@@ -158,7 +162,7 @@ export class NamingProtocolHandler {
    * 检查是否为标题组件 (表格标题)
    */
   isTitleComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.top.title);
+    const result = this.matchesPattern(name, SemanticDictionary.header.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isTitleComponent: "${name}" -> ${result}`);
     }
@@ -169,7 +173,7 @@ export class NamingProtocolHandler {
    * 检查是否为操作列/操作区域
    */
   isActionComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.actions.column);
+    const result = this.matchesPattern(name, SemanticDictionary.operations.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isActionComponent: "${name}" -> ${result}`);
     }
@@ -180,7 +184,7 @@ export class NamingProtocolHandler {
    * 检查是否为工具栏组件
    */
   isToolbarComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.top.toolbar);
+    const result = this.matchesPattern(name, SemanticDictionary.toolbar.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isToolbarComponent: "${name}" -> ${result}`);
     }
@@ -191,7 +195,7 @@ export class NamingProtocolHandler {
    * 检查是否为分页组件
    */
   isPaginationComponent(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.bottom.pagination);
+    const result = this.matchesPattern(name, SemanticDictionary.pagination.matchers);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isPaginationComponent: "${name}" -> ${result}`);
     }
@@ -200,9 +204,14 @@ export class NamingProtocolHandler {
 
   /**
    * 检查是否为操作按钮 (具体按钮)
+   * 基于 operations.intent 中的所有关键词
    */
   isOperationButton(name: string): boolean {
-    const result = this.matchesPattern(name, this.config.table.actions.items);
+    const allKeywords: string[] = [];
+    Object.values(SemanticDictionary.operations.intent).forEach(intentKeywords => {
+      allKeywords.push(...intentKeywords);
+    });
+    const result = this.matchesPattern(name, allKeywords);
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[NamingProtocol] isOperationButton: "${name}" -> ${result}`);
     }
@@ -263,11 +272,10 @@ export class NamingProtocolHandler {
       return { prefix: '', type: '', suffix: '', parts: [] };
     }
 
-    // 使用配置的分隔符进行分割
-    const separators = this.config.common.separators;
+    // 使用分隔符进行分割
+    const separators = ['-', '_', ' '];
     let parts = [name];
     
-    // 依次使用每个分隔符进行分割
     separators.forEach(separator => {
       const newParts: string[] = [];
       parts.forEach(part => {
@@ -276,9 +284,8 @@ export class NamingProtocolHandler {
       parts = newParts;
     });
     
-    // 过滤空字符串并去重
     parts = parts.filter(part => part.trim().length > 0);
-    
+
     if (parts.length === 0) {
       return { prefix: '', type: '', suffix: '', parts: [] };
     }

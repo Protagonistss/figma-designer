@@ -1,10 +1,12 @@
 // 协议层主入口
 export * from './config';
+export * from './intelligence';
 export * from './namingProtocol';
 export * from './layoutProtocol';
 
 import { NamingProtocolHandler } from './namingProtocol';
 import { LayoutProtocolHandler } from './layoutProtocol';
+import { IntelligenceEngine } from './intelligence';
 
 /**
  * 协议层管理器
@@ -13,10 +15,12 @@ import { LayoutProtocolHandler } from './layoutProtocol';
 export class ProtocolManager {
   private namingProtocol: NamingProtocolHandler;
   private layoutProtocol: LayoutProtocolHandler;
+  private intelligenceEngine: IntelligenceEngine;
 
   constructor() {
     this.namingProtocol = new NamingProtocolHandler();
     this.layoutProtocol = new LayoutProtocolHandler();
+    this.intelligenceEngine = new IntelligenceEngine();
   }
 
   getNamingProtocol(): NamingProtocolHandler {
@@ -25,6 +29,10 @@ export class ProtocolManager {
 
   getLayoutProtocol(): LayoutProtocolHandler {
     return this.layoutProtocol;
+  }
+
+  getIntelligenceEngine(): IntelligenceEngine {
+    return this.intelligenceEngine;
   }
 
   /**

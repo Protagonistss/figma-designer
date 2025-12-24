@@ -1,12 +1,23 @@
-import { LayoutRecognitionConfig, ParserConfig } from './config';
+// 布局识别协议处理器 - 基于位置关系的几何判断
+import { ParserConfig } from './config';
 
 /**
  * 布局识别协议处理器
  * 负责根据位置关系识别组件之间的关联
+ * 重构后：移除外部阈值配置，使用硬编码的合理默认值
  */
 export class LayoutProtocolHandler {
-  private config = LayoutRecognitionConfig;
   private debug = ParserConfig.debug;
+
+  // 硬编码的阈值常量（不再依赖外部配置）
+  private readonly ALIGNMENT_THRESHOLD = 5;
+  private readonly ROW_HEIGHT_THRESHOLD = 10;
+  private readonly LABEL_INPUT_DISTANCE = 20;
+  private readonly LABEL_INPUT_VERTICAL_DISTANCE = 10;
+  private readonly POSITION_TOLERANCE = 2;
+  private readonly INPUT_MIN_WIDTH = 60;
+  private readonly INPUT_MIN_HEIGHT = 20;
+  private readonly INPUT_MAX_HEIGHT = 60;
 
   /**
    * 判断两个节点是否水平对齐
@@ -14,7 +25,7 @@ export class LayoutProtocolHandler {
   isHorizontallyAligned(node1: SceneNode, node2: SceneNode): boolean {
     const centerY1 = node1.y + node1.height / 2;
     const centerY2 = node2.y + node2.height / 2;
-    const result = Math.abs(centerY1 - centerY2) < this.config.associationRules.alignmentThreshold;
+    const result = Math.abs(centerY1 - centerY2) < this.ALIGNMENT_THRESHOLD;
     
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[LayoutProtocol] isHorizontallyAligned:`, {
@@ -22,7 +33,7 @@ export class LayoutProtocolHandler {
         node2: node2.name,
         centerY1,
         centerY2,
-        threshold: this.config.associationRules.alignmentThreshold,
+        threshold: this.ALIGNMENT_THRESHOLD,
         result
       });
     }
@@ -36,7 +47,7 @@ export class LayoutProtocolHandler {
   isVerticallyAligned(node1: SceneNode, node2: SceneNode): boolean {
     const centerX1 = node1.x + node1.width / 2;
     const centerX2 = node2.x + node2.width / 2;
-    const result = Math.abs(centerX1 - centerX2) < this.config.associationRules.alignmentThreshold;
+    const result = Math.abs(centerX1 - centerX2) < this.ALIGNMENT_THRESHOLD;
     
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[LayoutProtocol] isVerticallyAligned:`, {
@@ -44,7 +55,7 @@ export class LayoutProtocolHandler {
         node2: node2.name,
         centerX1,
         centerX2,
-        threshold: this.config.associationRules.alignmentThreshold,
+        threshold: this.ALIGNMENT_THRESHOLD,
         result
       });
     }
@@ -57,14 +68,14 @@ export class LayoutProtocolHandler {
    */
   isSameRow(node1: SceneNode, node2: SceneNode): boolean {
     const yDiff = Math.abs(node1.y - node2.y);
-    const result = yDiff < this.config.associationRules.rowHeightThreshold;
+    const result = yDiff < this.ROW_HEIGHT_THRESHOLD;
     
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[LayoutProtocol] isSameRow:`, {
         node1: node1.name,
         node2: node2.name,
         yDiff,
-        threshold: this.config.associationRules.rowHeightThreshold,
+        threshold: this.ROW_HEIGHT_THRESHOLD,
         result
       });
     }
@@ -77,14 +88,14 @@ export class LayoutProtocolHandler {
    */
   isSameColumn(node1: SceneNode, node2: SceneNode): boolean {
     const xDiff = Math.abs(node1.x - node2.x);
-    const result = xDiff < this.config.associationRules.alignmentThreshold;
+    const result = xDiff < this.ALIGNMENT_THRESHOLD;
     
     if (this.debug.enableLogging && this.debug.logLevel === 'debug') {
       console.log(`[LayoutProtocol] isSameColumn:`, {
         node1: node1.name,
         node2: node2.name,
         xDiff,
-        threshold: this.config.associationRules.alignmentThreshold,
+        threshold: this.ALIGNMENT_THRESHOLD,
         result
       });
     }
@@ -133,20 +144,20 @@ export class LayoutProtocolHandler {
    */
   isLabelInputPair(label: SceneNode, input: SceneNode): boolean {
     // 首先检查label是否为文本节点
-    if (label.type !== this.config.hierarchyRules.textNodeType) {
+    if (label.type !== 'TEXT') {
       return false;
     }
 
     // 检查水平距离
     const horizontalDistance = this.getHorizontalDistance(label, input);
-    const isHorizontalValid = horizontalDistance <= this.config.associationRules.labelInputDistance;
+    const isHorizontalValid = horizontalDistance <= this.LABEL_INPUT_DISTANCE;
 
     // 检查垂直对齐
     const isAligned = this.isHorizontallyAligned(label, input);
 
     // 检查垂直距离（不能太分散）
     const verticalDistance = Math.abs(this.getVerticalDistance(label, input));
-    const isVerticalValid = verticalDistance <= this.config.associationRules.labelInputVerticalDistance;
+    const isVerticalValid = verticalDistance <= this.LABEL_INPUT_VERTICAL_DISTANCE;
 
     const result = isHorizontalValid && isAligned && isVerticalValid;
     
@@ -491,7 +502,7 @@ export class LayoutProtocolHandler {
       const avgX = xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
       
       const aligned = xCoords.every(x => 
-        Math.abs(x - avgX) < this.config.associationRules.alignmentThreshold
+        Math.abs(x - avgX) < this.ALIGNMENT_THRESHOLD
       );
       
       if (!aligned) return false;
@@ -535,13 +546,11 @@ export class LayoutProtocolHandler {
     width: number;
     height: number;
   }): boolean {
-    const tolerance = this.config.positionRules.tolerance;
-    
     return (
-      node.x >= area.x - tolerance &&
-      node.y >= area.y - tolerance &&
-      (node.x + node.width) <= (area.x + area.width) + tolerance &&
-      (node.y + node.height) <= (area.y + area.height) + tolerance
+      node.x >= area.x - this.POSITION_TOLERANCE &&
+      node.y >= area.y - this.POSITION_TOLERANCE &&
+      (node.x + node.width) <= (area.x + area.width) + this.POSITION_TOLERANCE &&
+      (node.y + node.height) <= (area.y + area.height) + this.POSITION_TOLERANCE
     );
   }
 
@@ -554,13 +563,13 @@ export class LayoutProtocolHandler {
     }
 
     // 尺寸检查
-    const { inputMinWidth, inputMinHeight, inputMaxHeight } = this.config.visualRules;
-    if (node.width < inputMinWidth || node.height < inputMinHeight || node.height > inputMaxHeight) {
+    if (node.width < this.INPUT_MIN_WIDTH || 
+        node.height < this.INPUT_MIN_HEIGHT || 
+        node.height > this.INPUT_MAX_HEIGHT) {
       return false;
     }
 
     // 样式检查 (有填充或描边)
-    // 注意：Figma Plugin API 中 fills/strokes 可能不可见或为空，这里做简单判断
     const hasVisibleFill = 'fills' in node && Array.isArray(node.fills) && node.fills.length > 0;
     const hasVisibleStroke = 'strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0;
 
