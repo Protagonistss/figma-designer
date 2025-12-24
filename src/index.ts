@@ -1,4 +1,4 @@
-import { processTablePage } from './core/processor/tableProcessor';
+import { processTablePage } from './core/processor/enhancedTableProcessor';
 
 async function main() {
   const selection = figma.currentPage.selection;
@@ -18,13 +18,20 @@ async function main() {
     
     console.log("---------------------------------------------------");
     console.log("Table Page Model Result:");
-    console.log(JSON.stringify(model, null, 2));
+    console.log(JSON.stringify(model, null, 2)); // 重新启用完整输出
+    
+    const searchCount = model.body.search?.fields.length || 0;
+    const columnCount = model.body.table.columns.length || 0;
+    console.log(`Summary: SearchFields=${searchCount}, Columns=${columnCount}`);
+    if (columnCount > 0) {
+        console.log("Columns:", model.body.table.columns.map(c => c.title).join(", "));
+    }
     console.log("---------------------------------------------------");
 
-    figma.notify(`解析成功! 搜索项: ${model.search.fields.length}, 表格列: ${model.table.columns.length}`);
-  } catch (err: any) {
+    figma.notify(`解析成功! 搜索项: ${searchCount}, 表格列: ${columnCount}`);
+  } catch (err) {
     console.error("Parsing error:", err);
-    figma.notify("解析出错: " + err.message);
+    figma.notify("解析出错: " + (err as Error).message);
   }
 
   figma.closePlugin();
