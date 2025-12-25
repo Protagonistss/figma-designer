@@ -876,6 +876,109 @@ export class EnhancedTableProcessor {
   }
 
   /**
+   * 识别表格中的 rowSelection（单选或多选）
+   * 通过检查表格中是否存在 checkbox 或 radio 按钮来判断
+   */
+  private detectRowSelection(tableNode: SceneNode): {
+    type: 'checkbox' | 'radio' | null;
+    showSelectAll: boolean;
+  } {
+    if (!isContainer(tableNode)) {
+      return { type: null, showSelectAll: false };
+    }
+
+    const namingProtocol = this.protocolManager.getNamingProtocol();
+    let hasCheckbox = false;
+    let hasRadio = false;
+    let hasSelectAll = false;
+
+    // 递归查找 checkbox 和 radio 节点
+    const findSelectionNodes = (node: SceneNode, depth: number = 0): void => {
+      if (depth > 5) return; // 限制深度
+
+      const name = node.name.toLowerCase();
+      
+      // 检查是否为 checkbox
+      const checkboxKeywords = ['checkbox', 'check', '多选', '勾选', '选择框'];
+      if (checkboxKeywords.some(keyword => name.includes(keyword))) {
+        hasCheckbox = true;
+        // 检查是否有全选相关的关键词
+        if (name.includes('all') || name.includes('全选') || name.includes('selectall')) {
+          hasSelectAll = true;
+        }
+      }
+
+      // 检查是否为 radio
+      const radioKeywords = ['radio', '单选', '单选框'];
+      if (radioKeywords.some(keyword => name.includes(keyword))) {
+        hasRadio = true;
+      }
+
+      // 检查节点尺寸（checkbox/radio 通常是小的方形或圆形）
+      if (node.type === 'RECTANGLE' || node.type === 'FRAME' || node.type === 'INSTANCE') {
+        const isSmallSquare = node.width > 10 && node.width < 30 && 
+                             node.height > 10 && node.height < 30 &&
+                             Math.abs(node.width - node.height) < 5; // 接近正方形
+        
+        if (isSmallSquare) {
+          // 如果名称包含选择相关关键词，很可能是 checkbox/radio
+          if (checkboxKeywords.some(k => name.includes(k)) || 
+              radioKeywords.some(k => name.includes(k)) ||
+              name.includes('select') || name.includes('选择')) {
+            if (radioKeywords.some(k => name.includes(k))) {
+              hasRadio = true;
+            } else {
+              hasCheckbox = true;
+            }
+          }
+        }
+      }
+
+      // 递归检查子节点
+      if (isContainer(node)) {
+        for (const child of node.children) {
+          if (child.visible) {
+            findSelectionNodes(child, depth + 1);
+          }
+        }
+      }
+    };
+
+    findSelectionNodes(tableNode);
+
+    // 确定类型
+    if (hasCheckbox) {
+      return { type: 'checkbox', showSelectAll: hasSelectAll || hasCheckbox };
+    } else if (hasRadio) {
+      return { type: 'radio', showSelectAll: false }; // radio 通常不支持全选
+    }
+
+    return { type: null, showSelectAll: false };
+  }
+
+  /**
+   * 判断列是否为 checkbox 列
+   * 当存在 rowSelection 时，应该过滤掉 checkbox 列
+   */
+  private isCheckboxColumn(column: TableColumn, index: number): boolean {
+    // 通常是第一列
+    if (index !== 0) return false;
+    
+    // 宽度较小（checkbox 列通常宽度在 30-60px 之间）
+    if (column.width && column.width > 60) return false;
+    
+    // 检查标题是否包含 checkbox 相关关键词
+    const title = column.title.toLowerCase();
+    const checkboxKeywords = ['checkbox', 'check', 'select', '选择', '勾选', 'checkbox列'];
+    const hasCheckboxKeyword = checkboxKeywords.some(keyword => title.includes(keyword));
+    
+    // 如果标题为空、很短，或者包含 checkbox 关键词，很可能是 checkbox 列
+    const isShortOrEmpty = !title || title.length <= 2;
+    
+    return hasCheckboxKeyword || (isShortOrEmpty && column.width !== undefined && column.width <= 60);
+  }
+
+  /**
    * 提取操作按钮
    */
   private extractActionButton(node: SceneNode): ActionButton | undefined {
@@ -1515,6 +1618,21 @@ export class EnhancedTableProcessor {
       columns = this.extractTableColumnsRecursive(node);
     }
 
+    // 识别 rowSelection（单选或多选）
+    const tableNodeForSelection = tableAreaNode || node;
+    const rowSelection = this.detectRowSelection(tableNodeForSelection);
+    
+    console.log(`[EnhancedTableProcessor] Detected rowSelection: ${rowSelection.type || 'none'}`);
+
+    // 如果识别到有 rowSelection，过滤掉 columns 中的 checkbox 列
+    if (rowSelection.type && columns.length > 0) {
+      const firstColumn = columns[0];
+      if (this.isCheckboxColumn(firstColumn, 0)) {
+        console.log(`[EnhancedTableProcessor] Filtering out checkbox column: '${firstColumn.title}' (width: ${firstColumn.width}) because rowSelection is detected`);
+        columns = columns.slice(1);
+      }
+    }
+
     // 构建新结构 (BodyArea)
     const bodyArea: BodyAreaModel = {
       role: 'BodyArea',
@@ -1526,10 +1644,10 @@ export class EnhancedTableProcessor {
       table: {
         role: 'DataGrid',
         columns: columns,
-        rowSelection: {
-          type: 'checkbox',
-          showSelectAll: true
-        },
+        rowSelection: rowSelection.type ? {
+          type: rowSelection.type,
+          showSelectAll: rowSelection.showSelectAll
+        } : undefined,
         actionColumn: actionButtons ? {
            column: {
              title: '操作',
