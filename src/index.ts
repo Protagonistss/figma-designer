@@ -1,4 +1,5 @@
 import { processTablePage } from './core/processor/enhancedTableProcessor';
+import { UI_HTML } from './ui/exportModal';
 
 async function main() {
   const selection = figma.currentPage.selection;
@@ -29,12 +30,25 @@ async function main() {
     console.log("---------------------------------------------------");
 
     figma.notify(`解析成功! 搜索项: ${searchCount}, 表格列: ${columnCount}`);
+    
+    // Show UI for export
+    figma.showUI(UI_HTML, { width: 260, height: 260, title: "Export Meta JSON" });
+    
+    // Send data to UI
+    figma.ui.postMessage({ type: 'meta-data', payload: model });
+
+    // Handle messages from UI
+    figma.ui.onmessage = (msg) => {
+      if (msg.type === 'close') {
+        figma.closePlugin();
+      }
+    };
+
   } catch (err) {
     console.error("Parsing error:", err);
     figma.notify("解析出错: " + (err as Error).message);
+    figma.closePlugin();
   }
-
-  figma.closePlugin();
 }
 
 main().catch((err) => {
