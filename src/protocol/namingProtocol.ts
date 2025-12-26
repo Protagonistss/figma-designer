@@ -1,12 +1,13 @@
 // 命名约定协议处理器 - 基于统一语义词典
 import { SemanticDictionary, ParserConfig } from './config';
+import { INamingProtocol } from './interfaces';
 
 /**
  * 命名约定协议处理器
  * 负责根据命名模式识别不同类型的组件和区域
  * 重构后：基于统一语义词典进行识别
  */
-export class NamingProtocolHandler {
+export class NamingProtocolHandler implements INamingProtocol {
   private debug = ParserConfig.debug;
 
   /**

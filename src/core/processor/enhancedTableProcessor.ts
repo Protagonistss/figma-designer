@@ -13,7 +13,7 @@ import {
   BodyAreaModel
 } from '../../types/model';
 import { isContainer, findChildren, sortNodesByPosition, findOneChild } from '../parser';
-import { ProtocolManager } from '../../protocol/index';
+import { ProtocolManager, IBusinessProtocol } from '../../protocol/index';
 import { TableRole, SemanticDictionary, ExclusionPatterns } from '../../protocol/config';
 import { IntelligenceEngine, TableIntelligenceEngine } from '../../protocol/intelligence';
 
@@ -36,13 +36,43 @@ function logNodeStructure(node: SceneNode, depth: number = 0): void {
  * 增强的表格页面处理器
  * 使用协议层进行智能解析
  */
-export class EnhancedTableProcessor {
+export class EnhancedTableProcessor implements IBusinessProtocol {
+  public readonly id = 'table-page-v1';
+  public readonly priority = 100;
+  
   private protocolManager: ProtocolManager;
   private intelligenceEngine: IntelligenceEngine;
 
   constructor() {
     this.protocolManager = new ProtocolManager();
     this.intelligenceEngine = new IntelligenceEngine();
+  }
+
+  /**
+   * 判断此协议是否能处理该节点
+   */
+  canHandle(node: SceneNode): boolean {
+    const naming = this.protocolManager.getNamingProtocol();
+    
+    // 1. 显式命名检查
+    if (naming.isTableArea(node.name) || naming.checkPattern(node.name, ['list', '列表', '管理', 'page'])) {
+        return true;
+    }
+
+    // 2. 结构检查 (如果包含 DataGrid 角色组件)
+    const dataGrid = this.findComponentByRole(node, 'DataGrid');
+    if (dataGrid) {
+        return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * 解析节点，返回业务模型
+   */
+  parse(node: SceneNode): TablePageModel {
+    return this.processTablePage(node);
   }
 
   /**

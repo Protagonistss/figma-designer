@@ -1,21 +1,27 @@
 // 协议层主入口
+import { NamingProtocolHandler } from './namingProtocol';
+import { LayoutProtocolHandler } from './layoutProtocol';
+import { IntelligenceEngine } from './intelligence';
+import { INamingProtocol, ILayoutProtocol, IIntelligenceEngine, IBusinessProtocol } from './interfaces';
+
+// Re-export interfaces and modules
+export * from './interfaces';
 export * from './config';
 export * from './intelligence';
 export * from './namingProtocol';
 export * from './layoutProtocol';
 
-import { NamingProtocolHandler } from './namingProtocol';
-import { LayoutProtocolHandler } from './layoutProtocol';
-import { IntelligenceEngine } from './intelligence';
-
 /**
  * 协议层管理器
- * 统一管理所有协议处理器
+ * 统一管理所有协议处理器，支持动态注册业务协议
  */
 export class ProtocolManager {
-  private namingProtocol: NamingProtocolHandler;
-  private layoutProtocol: LayoutProtocolHandler;
-  private intelligenceEngine: IntelligenceEngine;
+  private namingProtocol: INamingProtocol;
+  private layoutProtocol: ILayoutProtocol;
+  private intelligenceEngine: IIntelligenceEngine;
+  
+  // 存储注册的业务协议
+  private businessProtocols: Map<string, IBusinessProtocol> = new Map();
 
   constructor() {
     this.namingProtocol = new NamingProtocolHandler();
@@ -23,20 +29,68 @@ export class ProtocolManager {
     this.intelligenceEngine = new IntelligenceEngine();
   }
 
-  getNamingProtocol(): NamingProtocolHandler {
+  // --- 基础能力访问 ---
+
+  getNamingProtocol(): INamingProtocol {
     return this.namingProtocol;
   }
 
-  getLayoutProtocol(): LayoutProtocolHandler {
+  getLayoutProtocol(): ILayoutProtocol {
     return this.layoutProtocol;
   }
 
-  getIntelligenceEngine(): IntelligenceEngine {
+  getIntelligenceEngine(): IIntelligenceEngine {
     return this.intelligenceEngine;
+  }
+  
+  // --- 业务协议注册与管理 ---
+
+  /**
+   * 注册一个新的业务协议
+   */
+  registerProtocol(protocol: IBusinessProtocol): void {
+    if (this.businessProtocols.has(protocol.id)) {
+      console.warn(`[ProtocolManager] Protocol with id '${protocol.id}' is already registered. Overwriting.`);
+    }
+    this.businessProtocols.set(protocol.id, protocol);
   }
 
   /**
-   * 综合判断节点类型
+   * 获取指定的业务协议
+   */
+  getProtocol(id: string): IBusinessProtocol | undefined {
+    return this.businessProtocols.get(id);
+  }
+  
+  /**
+   * 获取所有注册的协议，按优先级降序排列
+   */
+  getAllProtocols(): IBusinessProtocol[] {
+    return Array.from(this.businessProtocols.values())
+      .sort((a, b) => b.priority - a.priority);
+  }
+
+  /**
+   * 自动识别并选择最匹配的协议
+   */
+  identifyProtocol(node: SceneNode): IBusinessProtocol | null {
+    const protocols = this.getAllProtocols();
+    
+    for (const protocol of protocols) {
+      try {
+        if (protocol.canHandle(node)) {
+          return protocol;
+        }
+      } catch (e) {
+        console.error(`[ProtocolManager] Error checking canHandle for protocol '${protocol.id}':`, e);
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 综合判断节点类型 (基础分析，作为回退或辅助)
    */
   analyzeNode(node: SceneNode): {
     businessType: string;

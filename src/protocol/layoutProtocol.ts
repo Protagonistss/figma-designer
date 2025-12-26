@@ -1,12 +1,13 @@
 // 布局识别协议处理器 - 基于位置关系的几何判断
 import { ParserConfig } from './config';
+import { ILayoutProtocol } from './interfaces';
 
 /**
  * 布局识别协议处理器
  * 负责根据位置关系识别组件之间的关联
  * 重构后：移除外部阈值配置，使用硬编码的合理默认值
  */
-export class LayoutProtocolHandler {
+export class LayoutProtocolHandler implements ILayoutProtocol {
   private debug = ParserConfig.debug;
 
   // 硬编码的阈值常量（不再依赖外部配置）

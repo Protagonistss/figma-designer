@@ -1,11 +1,12 @@
 // 智能识别引擎 - 基于语义词典的角色解析与动作推断
 import { TableRole, SemanticDictionary, ExclusionPatterns, RecognitionConfig, TableHierarchy, RequiredRoles } from './config';
+import { IIntelligenceEngine } from './interfaces';
 
 /**
  * 智能识别引擎
  * 负责基于语义词典进行节点角色识别和动作类型推断
  */
-export class IntelligenceEngine {
+export class IntelligenceEngine implements IIntelligenceEngine {
   /**
    * 解析节点角色
    * 基于 SemanticDictionary 进行语义匹配，返回最佳匹配的角色和置信度
