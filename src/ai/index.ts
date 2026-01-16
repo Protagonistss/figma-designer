@@ -1,3 +1,2 @@
-export * from './interfaces';
-export * from './providers/figma-ui';
+// AI 模块导出
 export * from './prompts';

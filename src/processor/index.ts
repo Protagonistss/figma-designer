@@ -1,5 +1,4 @@
 import { MetadataExtractor } from '../extractor';
-import { FigmaUIMessagingEngine } from '../ai';
 import { NodeMetadata, InferenceResult } from '../types/metadata';
 import { PageContent } from '../types/page-content';
 import { buildPageAnalysisPrompt } from '../ai/prompts/page-analysis';

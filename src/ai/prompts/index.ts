@@ -1,6 +1,3 @@
 // Prompt 模块导出
-export * from './role-inference';
-export * from './table-structure';
-export * from './search-form';
-export * from './toolbar-actions';
+// 当前只使用单次页面分析 Prompt
 export * from './page-analysis';
