@@ -37,4 +37,10 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   define: loadEnv(),
+  esbuildOptions(options) {
+    options.loader = {
+      ...options.loader,
+      '.md': 'text'
+    };
+  }
 });
