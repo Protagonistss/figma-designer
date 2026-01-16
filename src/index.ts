@@ -1,5 +1,6 @@
-import { processTablePage } from './core/processor/enhancedTableProcessor';
-import { UI_HTML } from './ui/exportModal';
+import { Processor } from './processor';
+import { UI_HTML } from './ui';
+import { ConfigManager } from './config';
 
 async function main() {
   const selection = figma.currentPage.selection;
@@ -14,41 +15,53 @@ async function main() {
   const rootNode = selection[0];
   console.log(`Processing root node: ${rootNode.name} (Type: ${rootNode.type})`);
 
-  try {
-    const model = processTablePage(rootNode);
-    
-    console.log("---------------------------------------------------");
-    console.log("Table Page Model Result:");
-    console.log(JSON.stringify(model, null, 2)); // 重新启用完整输出
-    
-    const searchCount = model.body.search?.fields.length || 0;
-    const columnCount = model.body.table.columns.length || 0;
-    console.log(`Summary: SearchFields=${searchCount}, Columns=${columnCount}`);
-    if (columnCount > 0) {
-        console.log("Columns:", model.body.table.columns.map(c => c.title).join(", "));
-    }
-    console.log("---------------------------------------------------");
+  // Show UI for API Key input and analysis
+  figma.showUI(UI_HTML, { width: 400, height: 500, title: "AI 设计稿解析" });
 
-    figma.notify(`解析成功! 搜索项: ${searchCount}, 表格列: ${columnCount}`);
-    
-    // Show UI for export
-    figma.showUI(UI_HTML, { width: 260, height: 260, title: "Export Meta JSON" });
-    
-    // Send data to UI
-    figma.ui.postMessage({ type: 'meta-data', payload: model });
+  // 发送配置信息给 UI
+  const config = ConfigManager.getInstance().getConfig();
+  figma.ui.postMessage({
+    type: 'config',
+    payload: config
+  });
 
-    // Handle messages from UI
-    figma.ui.onmessage = (msg) => {
-      if (msg.type === 'close') {
-        figma.closePlugin();
+  // Handle messages from UI
+  figma.ui.onmessage = async (msg: any) => {
+    if (msg.type === 'start-analysis') {
+      try {
+        figma.notify("开始分析...");
+        
+        const processor = new Processor();
+        const result = await processor.process(rootNode);
+        
+        console.log("---------------------------------------------------");
+        console.log("AI Inference Result:");
+        console.log(JSON.stringify(result, null, 2));
+        console.log("---------------------------------------------------");
+        
+        // Send result back to UI for display
+        figma.ui.postMessage({
+          type: 'analysis-result',
+          payload: {
+            metadata: result.metadata,
+            inference: result.inference,
+            pageContent: result.pageContent
+          }
+        });
+        
+        // 显示分析摘要
+        const pageType = result.pageContent.page?.type || '未知';
+        const columnsCount = result.pageContent.table?.columns?.length || 0;
+        const fieldsCount = result.pageContent.search?.fields?.length || 0;
+        figma.notify(`分析完成! 类型: ${pageType}, 表格列: ${columnsCount}, 搜索字段: ${fieldsCount}`);
+      } catch (err) {
+        console.error("Processing error:", err);
+        figma.notify("分析出错: " + (err as Error).message);
       }
-    };
-
-  } catch (err) {
-    console.error("Parsing error:", err);
-    figma.notify("解析出错: " + (err as Error).message);
-    figma.closePlugin();
-  }
+    } else if (msg.type === 'close') {
+      figma.closePlugin();
+    }
+  };
 }
 
 main().catch((err) => {
