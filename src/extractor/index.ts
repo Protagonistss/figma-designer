@@ -2,9 +2,11 @@ import { NodeMetadata } from '../types/metadata';
 
 export class MetadataExtractor {
   private maxDepth: number;
+  private filterMockData: boolean;
   
-  constructor(maxDepth: number = 4) {
+  constructor(maxDepth: number = 4, filterMockData: boolean = false) {
     this.maxDepth = maxDepth;
+    this.filterMockData = filterMockData;
   }
   
   // 提取节点树的元数据
@@ -14,28 +16,27 @@ export class MetadataExtractor {
   
   private extractNode(node: SceneNode, depth: number): NodeMetadata {
     const metadata: NodeMetadata = {
-      id: node.id,
       name: node.name,
       type: node.type,
-      x: Math.round(node.x),
-      y: Math.round(node.y),
-      width: Math.round(node.width),
-      height: Math.round(node.height),
-      depth,
-      childCount: 0
+      w: Math.round(node.width),
+      h: Math.round(node.height)
     };
     
-    // 收集文本内容
+    // 收集文本内容（合并为单个字符串）
     const texts = this.collectTexts(node);
     if (texts.length > 0) {
-      metadata.texts = texts;
+      const filteredText = this.filterMockData ? this.filterText(node, texts) : texts.join(' ');
+      if (filteredText) {
+        metadata.text = filteredText;
+      }
     }
     
     // 递归提取子节点（限制深度）
     if ('children' in node && depth < this.maxDepth) {
       const visibleChildren = node.children.filter(c => c.visible);
-      metadata.childCount = visibleChildren.length;
-      metadata.children = visibleChildren.map(c => this.extractNode(c, depth + 1));
+      if (visibleChildren.length > 0) {
+        metadata.children = visibleChildren.map(c => this.extractNode(c, depth + 1));
+      }
     }
     
     return metadata;
@@ -53,5 +54,37 @@ export class MetadataExtractor {
     }
     
     return texts.filter(t => t.trim().length > 0);
+  }
+  
+  /**
+   * 智能过滤文本内容，移除 mock 数据
+   * 策略：保守过滤，只移除明显的 mock 数据，保留所有可能有用的信息
+   */
+  private filterText(node: SceneNode, texts: string[]): string {
+    const joinedText = texts.join(' ').trim();
+    if (!joinedText) return '';
+    
+    const textLength = joinedText.length;
+    
+    // 只过滤明显的 mock 数据特征
+    const hasEmail = /\S+@\S+\.\S+/.test(joinedText);
+    const hasUrl = /https?:\/\//.test(joinedText);
+    const hasDate = /\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(joinedText);
+    const hasPhone = /\d{3,4}[-\s]?\d{3,4}[-\s]?\d{4}/.test(joinedText);
+    const isLongNumber = /^\d{5,}$/.test(joinedText); // 5位以上的纯数字（可能是ID）
+    const isPlaceholder = /^(请输入|请选择|输入|选择|搜索|search|placeholder)/i.test(joinedText);
+    
+    // 规则 1: 明确的 mock 数据 → 移除
+    if (hasEmail || hasUrl || hasDate || hasPhone || isLongNumber || isPlaceholder) {
+      return '';
+    }
+    
+    // 规则 2: 超长文本（>100 字符）→ 可能是示例段落 → 移除
+    if (textLength > 100) {
+      return '';
+    }
+    
+    // 其他所有文本都保留
+    return joinedText;
   }
 }
