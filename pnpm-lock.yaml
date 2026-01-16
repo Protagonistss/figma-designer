@@ -14,6 +14,9 @@ importers:
       '@figma/plugin-typings':
         specifier: '*'
         version: 1.121.0
+      '@ithinku/tsconfig':
+        specifier: 0.0.7
+        version: 0.0.7
       '@types/node':
         specifier: 24.10.9
         version: 24.10.9
@@ -227,6 +230,9 @@ packages:
   '@humanwhocodes/object-schema@2.0.3':
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
     deprecated: Use @eslint/object-schema instead
+
+  '@ithinku/tsconfig@0.0.7':
+    resolution: {integrity: sha512-25tMTsTeOInHoLzJP37rAwhGxI4MH3yUmbzYiW7dLxf3KSQCL7MJX/G0oJYu9Pdpz/ZetHCEBNZ9KdNfraOB+w==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1154,6 +1160,8 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/object-schema@2.0.3': {}
+
+  '@ithinku/tsconfig@0.0.7': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
