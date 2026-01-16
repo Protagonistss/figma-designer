@@ -11,11 +11,12 @@
   ],
   "networkAccess": {
     "allowedDomains": [
-      "none"
+      "https://open.bigmodel.cn"
     ],
     "devAllowedDomains": [
-      "http://localhost:7242"
+      "http://localhost:7242",
+      "https://open.bigmodel.cn"
     ],
-    "reasoning": "Debug logging to local development server"
+    "reasoning": "Access BigModel API for AI inference"
   }
 }

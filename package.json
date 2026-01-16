@@ -4,8 +4,8 @@
   "description": "Figma Design Plugin",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format iife --clean --no-splitting",
-    "dev": "tsup src/index.ts --format iife --clean --no-splitting --watch --sourcemap",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix ."
   },
