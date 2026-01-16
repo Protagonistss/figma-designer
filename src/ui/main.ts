@@ -390,6 +390,7 @@ export const UI_HTML = `
     <div class="tabs">
       <button class="tab active" data-tab="pageContent">PageContent</button>
       <button class="tab" data-tab="metadata">Metadata</button>
+      <button class="tab" data-tab="nodeTree">Node Tree</button>
     </div>
     
     <div id="pageContent" class="tab-content active">
@@ -399,6 +400,10 @@ export const UI_HTML = `
     <div id="metadata" class="tab-content">
       <button class="btn-copy" data-target="metadataJson">复制</button>
       <pre id="metadataJson"></pre>
+    </div>
+    <div id="nodeTree" class="tab-content">
+      <button class="btn-copy" data-target="nodeTreeJson">复制</button>
+      <pre id="nodeTreeJson"></pre>
     </div>
   </div>
   
@@ -417,6 +422,7 @@ export const UI_HTML = `
     const footerActions = document.getElementById('footerActions');
     const pageContentJson = document.getElementById('pageContentJson');
     const metadataJson = document.getElementById('metadataJson');
+    const nodeTreeJson = document.getElementById('nodeTreeJson');
     const nodeCountEl = document.getElementById('nodeCount');
     const columnCountEl = document.getElementById('columnCount');
     const fieldCountEl = document.getElementById('fieldCount');
@@ -568,6 +574,7 @@ export const UI_HTML = `
         // 显示 Tab 和 底部操作栏
         pageContentJson.textContent = JSON.stringify(msg.payload.pageContent, null, 2);
         metadataJson.textContent = JSON.stringify(msg.payload.metadata, null, 2);
+        nodeTreeJson.textContent = JSON.stringify(msg.payload.nodeTree, null, 2);
         tabsContainer.style.display = 'flex'; // Flex 布局
         footerActions.style.display = 'block'; // 显示底部操作栏
       }

@@ -2,6 +2,38 @@ import { Processor } from './processor';
 import { UI_HTML } from './ui';
 import { ConfigManager } from './config';
 
+/**
+ * 提取原始节点树（用于调试和对比）
+ * 包含完整的节点信息：id、坐标、尺寸等
+ */
+function extractRawNodeTree(node: SceneNode): any {
+  const rawNode: any = {
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    visible: node.visible,
+    x: Math.round(node.x),
+    y: Math.round(node.y),
+    width: Math.round(node.width),
+    height: Math.round(node.height)
+  };
+  
+  // 提取文本内容
+  if (node.type === 'TEXT') {
+    rawNode.characters = (node as TextNode).characters;
+  }
+  
+  // 递归提取子节点
+  if ('children' in node) {
+    rawNode.children = node.children
+      .filter(c => c.visible)
+      .map(c => extractRawNodeTree(c));
+  }
+  
+  return rawNode;
+}
+
+
 async function main() {
   const selection = figma.currentPage.selection;
 
@@ -45,7 +77,8 @@ async function main() {
           payload: {
             metadata: result.metadata,
             inference: result.inference,
-            pageContent: result.pageContent
+            pageContent: result.pageContent,
+            nodeTree: extractRawNodeTree(rootNode)
           }
         });
         
