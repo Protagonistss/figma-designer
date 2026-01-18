@@ -128,6 +128,35 @@ export const UI_HTML = `
       background: #9ca3af; 
       cursor: not-allowed;
     }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .btn-secondary:disabled {
+      color: #9ca3af;
+      border-color: #d1d5db;
+      cursor: not-allowed;
+    }
     
     /* 状态栏 */
     .status-bar {
@@ -359,9 +388,14 @@ export const UI_HTML = `
     <div class="input-wrapper">
       <input type="password" id="apiKey" placeholder="请输入 OpenAI API Key (sk-...)" />
     </div>
-    <button class="btn-primary" id="analyzeBtn">
-      <span>开始智能分析</span>
-    </button>
+    <div class="button-group">
+      <button class="btn-primary" id="extractBtn">
+        <span>提取元数据</span>
+      </button>
+      <button class="btn-secondary" id="inferBtn" disabled>
+        <span>推断结构</span>
+      </button>
+    </div>
     
     <div class="status-bar">
       <div id="statusDot" class="status-dot"></div>
@@ -388,16 +422,12 @@ export const UI_HTML = `
   <!-- Tab 容器 -->
   <div id="tabsContainer" style="display: none;">
     <div class="tabs">
-      <button class="tab active" data-tab="pageContent">PageContent</button>
-      <button class="tab" data-tab="metadata">Metadata</button>
+      <button class="tab active" data-tab="metadata">Metadata</button>
       <button class="tab" data-tab="nodeTree">Node Tree</button>
+      <button class="tab" data-tab="inference" id="inferenceTab" style="display: none;">Inference</button>
     </div>
     
-    <div id="pageContent" class="tab-content active">
-      <button class="btn-copy" data-target="pageContentJson">复制</button>
-      <pre id="pageContentJson"></pre>
-    </div>
-    <div id="metadata" class="tab-content">
+    <div id="metadata" class="tab-content active">
       <button class="btn-copy" data-target="metadataJson">复制</button>
       <pre id="metadataJson"></pre>
     </div>
@@ -405,30 +435,38 @@ export const UI_HTML = `
       <button class="btn-copy" data-target="nodeTreeJson">复制</button>
       <pre id="nodeTreeJson"></pre>
     </div>
+    <div id="inference" class="tab-content">
+      <button class="btn-copy" data-target="inferenceJson">复制</button>
+      <pre id="inferenceJson"></pre>
+    </div>
   </div>
   
   <!-- 底部操作栏 -->
   <div id="footerActions" class="bottom-bar" style="display: none;">
-    <button class="btn-download" id="downloadBtn">下载 PageContent JSON</button>
+    <button class="btn-download" id="downloadBtn">下载元数据 JSON</button>
   </div>
 
   <script>
     const apiKeyInput = document.getElementById('apiKey');
-    const analyzeBtn = document.getElementById('analyzeBtn');
+    const extractBtn = document.getElementById('extractBtn');
+    const inferBtn = document.getElementById('inferBtn');
     const statusText = document.getElementById('statusText');
     const statusDot = document.getElementById('statusDot');
     const statsDiv = document.getElementById('stats');
     const tabsContainer = document.getElementById('tabsContainer');
     const footerActions = document.getElementById('footerActions');
-    const pageContentJson = document.getElementById('pageContentJson');
     const metadataJson = document.getElementById('metadataJson');
     const nodeTreeJson = document.getElementById('nodeTreeJson');
+    const inferenceTab = document.getElementById('inferenceTab');
+    const inferenceJson = document.getElementById('inferenceJson');
     const nodeCountEl = document.getElementById('nodeCount');
     const columnCountEl = document.getElementById('columnCount');
     const fieldCountEl = document.getElementById('fieldCount');
     const downloadBtn = document.getElementById('downloadBtn');
     
-    let currentResult = null;
+    let currentMetadata = null;
+    let currentNodeTree = null;
+    let currentInference = null;
     
     // 状态更新工具
     function updateStatus(type, text) {
@@ -474,24 +512,36 @@ export const UI_HTML = `
       });
     });
 
+    function setActiveTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const targetTab = document.querySelector(\`.tab[data-tab="\${tabId}"]\`);
+      const targetContent = document.getElementById(tabId);
+      if (targetTab) {
+        targetTab.classList.add('active');
+      }
+      if (targetContent) {
+        targetContent.classList.add('active');
+      }
+    }
+
     // Tab 切换逻辑
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab) {
+          setActiveTab(tab.dataset.tab);
+        }
       });
     });
     
     // 下载 JSON
     downloadBtn.onclick = () => {
-      if (!currentResult) return;
-      const blob = new Blob([JSON.stringify(currentResult.pageContent, null, 2)], { type: 'application/json' });
+      if (!currentMetadata) return;
+      const blob = new Blob([JSON.stringify(currentMetadata, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'page-content.json';
+      a.download = 'metadata.json';
       a.click();
       URL.revokeObjectURL(url);
     };
@@ -530,9 +580,9 @@ export const UI_HTML = `
       
       if (msg.type === 'ai-request') {
         try {
-          updateStatus('loading', '正在分析页面结构...');
+          updateStatus('loading', '正在推断...');
           
-          const result = await callOpenAI(msg.prompt, msg.metadata);
+          const result = await callOpenAI(msg.prompt);
           
           parent.postMessage({
             pluginMessage: {
@@ -551,36 +601,68 @@ export const UI_HTML = `
             }
           }, '*');
           
-          updateStatus('error', '分析失败: ' + error.message);
+          updateStatus('error', '推断失败: ' + error.message);
         }
-      } else if (msg.type === 'analysis-result') {
-        currentResult = msg.payload;
+      } else if (msg.type === 'extract-result') {
+        currentMetadata = msg.payload.metadata;
+        currentNodeTree = msg.payload.nodeTree;
+        currentInference = null;
         
-        // 更新状态
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerHTML = '<span>重新分析</span>';
-        updateStatus('success', '分析完成');
+        extractBtn.disabled = false;
+        extractBtn.innerHTML = '<span>重新提取</span>';
+        inferBtn.disabled = false;
+        inferBtn.innerHTML = '<span>开始推断</span>';
+        updateStatus('success', '元数据提取完成');
         
-        // 显示统计
         const nodeCount = countNodes(msg.payload.metadata);
-        const columnCount = msg.payload.pageContent?.table?.columns?.length || 0;
-        const fieldCount = msg.payload.pageContent?.search?.fields?.length || 0;
-        
         nodeCountEl.textContent = nodeCount;
-        columnCountEl.textContent = columnCount;
-        fieldCountEl.textContent = fieldCount;
+        columnCountEl.textContent = '-';
+        fieldCountEl.textContent = '-';
         statsDiv.style.display = 'flex';
         
-        // 显示 Tab 和 底部操作栏
-        pageContentJson.textContent = JSON.stringify(msg.payload.pageContent, null, 2);
         metadataJson.textContent = JSON.stringify(msg.payload.metadata, null, 2);
         nodeTreeJson.textContent = JSON.stringify(msg.payload.nodeTree, null, 2);
-        tabsContainer.style.display = 'flex'; // Flex 布局
-        footerActions.style.display = 'block'; // 显示底部操作栏
+        inferenceJson.textContent = '';
+        if (inferenceTab) {
+          inferenceTab.style.display = 'none';
+        }
+        
+        tabsContainer.style.display = 'flex';
+        footerActions.style.display = 'block';
+        setActiveTab('metadata');
+      } else if (msg.type === 'extract-error') {
+        extractBtn.disabled = false;
+        extractBtn.innerHTML = '<span>提取元数据</span>';
+        inferBtn.disabled = true;
+        const errorMessage = msg.payload?.message || '提取失败';
+        updateStatus('error', '提取失败: ' + errorMessage);
+      } else if (msg.type === 'inference-result') {
+        currentInference = msg.payload.result;
+        
+        inferBtn.disabled = false;
+        inferBtn.innerHTML = '<span>重新推断</span>';
+        updateStatus('success', '推断完成');
+        
+        inferenceJson.textContent = JSON.stringify(currentInference, null, 2);
+        if (inferenceTab) {
+          inferenceTab.style.display = 'inline-flex';
+        }
+        
+        const columnCount = currentInference?.table?.columns?.length || 0;
+        const fieldCount = currentInference?.search?.fields?.length || 0;
+        columnCountEl.textContent = columnCount;
+        fieldCountEl.textContent = fieldCount;
+        
+        setActiveTab('inference');
+      } else if (msg.type === 'inference-error') {
+        inferBtn.disabled = false;
+        inferBtn.innerHTML = '<span>开始推断</span>';
+        const errorMessage = msg.payload?.message || '推断失败';
+        updateStatus('error', '推断失败: ' + errorMessage);
       }
     };
     
-    async function callOpenAI(systemPrompt, metadata) {
+    async function callOpenAI(systemPrompt) {
       // 优先使用配置的 API Key，否则使用输入框中的值
       const apiKey = configuredApiKey || apiKeyInput.value.trim();
       if (!apiKey) {
@@ -649,15 +731,24 @@ export const UI_HTML = `
       }
     }
     
-    // 分析按钮点击
-    analyzeBtn.onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'start-analysis' } }, '*');
-      analyzeBtn.disabled = true;
-      analyzeBtn.innerHTML = '<span>分析中...</span>';
+    // 提取按钮点击
+    extractBtn.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'start-extract' } }, '*');
+      extractBtn.disabled = true;
+      extractBtn.innerHTML = '<span>提取中...</span>';
+      inferBtn.disabled = true;
       updateStatus('loading', '正在提取设计稿数据...');
       tabsContainer.style.display = 'none';
       footerActions.style.display = 'none';
       statsDiv.style.display = 'none';
+    };
+
+    // 推断按钮点击
+    inferBtn.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'start-inference' } }, '*');
+      inferBtn.disabled = true;
+      inferBtn.innerHTML = '<span>推断中...</span>';
+      updateStatus('loading', '正在推断页面结构...');
     };
   </script>
 </body>

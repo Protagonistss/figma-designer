@@ -1,6 +1,8 @@
 import { Processor } from './processor';
 import { UI_HTML } from './ui';
 import { ConfigManager } from './config';
+import { buildPageAnalysisPrompt } from './ai/prompts/page-analysis';
+import { NodeMetadata } from './types/metadata';
 
 /**
  * 提取原始节点树（用于调试和对比）
@@ -57,39 +59,106 @@ async function main() {
     payload: config
   });
 
+  const processor = new Processor();
+  let lastMetadata: NodeMetadata | null = null;
+  const pendingAiRequests = new Map<string, { resolve: (result: any) => void; reject: (error: Error) => void; timeoutId: number }>();
+
+  const requestAI = (prompt: string, metadata: NodeMetadata): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      console.log('[AI] Sending request:', requestId);
+
+      const timeoutId = setTimeout(() => {
+        pendingAiRequests.delete(requestId);
+        reject(new Error('AI request timeout'));
+      }, 180000);
+
+      pendingAiRequests.set(requestId, { resolve, reject, timeoutId });
+
+      figma.ui.postMessage({
+        type: 'ai-request',
+        requestId,
+        requestType: 'page-analysis',
+        prompt,
+        metadata
+      });
+    });
+  };
+
   // Handle messages from UI
   figma.ui.onmessage = async (msg: any) => {
-    if (msg.type === 'start-analysis') {
+    if (msg.type === 'ai-response' && msg.requestId) {
+      const pending = pendingAiRequests.get(msg.requestId);
+      if (!pending) {
+        return;
+      }
+
+      clearTimeout(pending.timeoutId);
+      pendingAiRequests.delete(msg.requestId);
+
+      if (msg.error) {
+        pending.reject(new Error(msg.error));
+      } else if (msg.result === undefined || msg.result === null) {
+        pending.reject(new Error('AI 响应内容为空'));
+      } else {
+        pending.resolve(msg.result);
+      }
+      return;
+    }
+
+    if (msg.type === 'start-extract') {
       try {
-        figma.notify("开始分析...");
-        
-        const processor = new Processor();
-        const result = await processor.process(rootNode);
-        
-        console.log("---------------------------------------------------");
-        console.log("AI Inference Result:");
-        console.log(JSON.stringify(result, null, 2));
-        console.log("---------------------------------------------------");
-        
-        // Send result back to UI for display
+        figma.notify("开始提取元数据...");
+
+        const result = await processor.extract(rootNode);
+        lastMetadata = result.metadata;
+
         figma.ui.postMessage({
-          type: 'analysis-result',
+          type: 'extract-result',
           payload: {
             metadata: result.metadata,
-            inference: result.inference,
-            pageContent: result.pageContent,
             nodeTree: extractRawNodeTree(rootNode)
           }
         });
-        
-        // 显示分析摘要
-        const pageType = result.pageContent.page?.type || '未知';
-        const columnsCount = result.pageContent.table?.columns?.length || 0;
-        const fieldsCount = result.pageContent.search?.fields?.length || 0;
-        figma.notify(`分析完成! 类型: ${pageType}, 表格列: ${columnsCount}, 搜索字段: ${fieldsCount}`);
+
+        figma.notify('元数据提取完成');
       } catch (err) {
         console.error("Processing error:", err);
-        figma.notify("分析出错: " + (err as Error).message);
+        figma.notify("提取出错: " + (err as Error).message);
+        figma.ui.postMessage({
+          type: 'extract-error',
+          payload: { message: (err as Error).message }
+        });
+      }
+    } else if (msg.type === 'start-inference') {
+      if (!lastMetadata) {
+        const errorMessage = '请先提取元数据';
+        figma.notify(errorMessage);
+        figma.ui.postMessage({
+          type: 'inference-error',
+          payload: { message: errorMessage }
+        });
+        return;
+      }
+
+      try {
+        figma.notify('开始推断...');
+        const prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
+        const inferenceResult = await requestAI(prompt, lastMetadata);
+
+        figma.ui.postMessage({
+          type: 'inference-result',
+          payload: { result: inferenceResult }
+        });
+
+        figma.notify('推断完成');
+      } catch (err) {
+        console.error('Inference error:', err);
+        figma.notify('推断出错: ' + (err as Error).message);
+        figma.ui.postMessage({
+          type: 'inference-error',
+          payload: { message: (err as Error).message }
+        });
       }
     } else if (msg.type === 'close') {
       figma.closePlugin();

@@ -1,13 +1,24 @@
 // 节点元数据（精简版，适合发送给 AI）
 export interface NodeMetadata {
+  id: string;
+  // 原始节点名（仅用于追踪，不作为语义依据）
   name: string;
   type: string;  // FRAME, TEXT, INSTANCE, etc.
+  visible: boolean;
   
-  // 几何信息（简化为尺寸，位置信息通常对 AI 推理价值不大）
+  // 几何信息（用于布局/相对位置推断）
+  x: number;
+  y: number;
   w: number;  // width
   h: number;  // height
+  abs?: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
   
-  // 文本内容（合并为单个字符串）
+  // 文本内容（仅文本节点）
   text?: string;
   
   // 子节点（递归，限制深度避免 Token 过多）
@@ -16,9 +27,6 @@ export interface NodeMetadata {
 
 // 完整元数据（用于内部处理和调试）
 export interface FullNodeMetadata extends NodeMetadata {
-  id: string;
-  x: number;
-  y: number;
   depth: number;
 }
 
