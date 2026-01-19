@@ -2,6 +2,7 @@ export interface AppConfig {
   apiKey: string;
   apiBaseUrl: string;
   model: string;
+  availableModels: { value: string; label: string }[];
 }
 
 export class ConfigManager {
@@ -11,11 +12,17 @@ export class ConfigManager {
   private constructor() {
     this.config = {
       // @ts-ignore
-      apiKey: process.env.API_KEY || '', // 从构建时的环境变量注入
+      apiKey: process.env.API_KEY || '',
       // @ts-ignore
       apiBaseUrl: process.env.API_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
       // @ts-ignore
-      model: process.env.MODEL || 'glm-4.5-flash'
+      model: process.env.MODEL || 'glm-4-flash',
+      availableModels: [
+        { value: 'glm-4.7', label: 'GLM-4.7 (文本)' },
+        { value: 'GLM-4.6V', label: 'GLM-4.6V (视觉)' },
+        { value: 'GLM-4.6V-Flash', label: 'GLM-4.6V-Flash (视觉free)' },
+        { value: 'glm-4.5-flash', label: 'GLM-4.5-Flash (快速free)' },
+      ]
     };
   }
 

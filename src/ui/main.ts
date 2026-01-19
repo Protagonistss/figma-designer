@@ -8,21 +8,7 @@ export const UI_HTML = `
   <meta charset="utf-8">
   <style>
     :root {
-      --primary: #18a0fb;
-      --primary-hover: #1592e6;
-      --bg: #ffffff;
-      --bg-secondary: #f8f9fa;
-      --text: #333333;
-      --text-secondary: #666666;
-      --border: #e0e0e0;
-      --success: #10b981;
-      --error: #ef4444;
-      --code-bg: #1e1e1e;
-      --code-text: #d4d4d4;
-    }
-    
-    :root {
-      --primary: #2563eb; /* 更深邃的蓝 */
+      --primary: #2563eb;
       --primary-hover: #1d4ed8;
       --bg: #ffffff;
       --bg-secondary: #f3f4f6;
@@ -31,27 +17,33 @@ export const UI_HTML = `
       --border: #e5e7eb;
       --success: #10b981;
       --error: #ef4444;
-      --code-bg: #111827; /* 近似黑色 */
+      --code-bg: #111827;
       --code-text: #e5e7eb;
     }
     
     * { box-sizing: border-box; }
     
+    html, body { 
+      height: 100%;
+      overflow: hidden; 
+    }
+
     body { 
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      padding: 16px; 
+      padding: 12px;
+      padding-bottom: 0; /* 底部无内边距 */
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* 禁止 Body 滚动 */
     }
     
     /* 头部区域固定 */
     .header-section {
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
     
     /* 输入框 */
@@ -189,8 +181,8 @@ export const UI_HTML = `
     .stats {
       display: flex;
       justify-content: space-between;
-      margin-top: 12px;
-      padding: 10px 16px;
+      margin-top: 8px;
+      padding: 8px 12px;
       background: var(--bg-secondary);
       border-radius: 6px;
       border: 1px solid var(--border);
@@ -203,7 +195,7 @@ export const UI_HTML = `
     }
     
     .stat-value {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: var(--text);
       line-height: 1.2;
@@ -221,8 +213,9 @@ export const UI_HTML = `
       flex: 1;
       display: flex;
       flex-direction: column;
-      margin-top: 16px;
-      min-height: 0; /* 关键：允许子元素滚动 */
+      margin-top: 12px;
+      margin-bottom: 8px; /* 底部留白 */
+      min-height: 150px;  /* 保证最小高度 */
       border: 1px solid var(--border);
       border-radius: 8px;
       overflow: hidden;
@@ -267,10 +260,11 @@ export const UI_HTML = `
     
     /* 迷你下载按钮 */
     .btn-download-mini {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 4px 8px;
+      height: 24px; /* 固定高度 */
+      padding: 0 8px;
       margin-left: 8px;
       font-size: 11px;
       color: var(--primary);
@@ -280,6 +274,7 @@ export const UI_HTML = `
       cursor: pointer;
       font-weight: 600;
       transition: all 0.2s;
+      white-space: nowrap;
     }
     
     .btn-download-mini:hover {
@@ -292,27 +287,66 @@ export const UI_HTML = `
       flex: 1;
       background: var(--code-bg);
       flex-direction: column;
-      overflow: hidden; /* 自身不滚动 */
-      position: relative; /* 关键：为绝对定位子元素提供锚点 */
+      overflow: hidden;
+      position: relative;
     }
-    
-    .tab-content.active {
-      display: flex; /* 使用 flex 让 pre 填满 */
-    }
-    
-    .tab-content pre {
+
+    /* 使用 ID 选择器强制样式 */
+    #metadata, #nodeTree, #inference {
+      display: none;
       flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      height: 100%;
+      min-height: 0;
+      border-radius: 0 0 8px 8px;
+    }
+    
+    #metadata.active, #nodeTree.active, #inference.active {
+      display: flex !important;
+    }
+    
+    /* 还原为普通 Textarea 样式 */
+    .code-textarea {
+      flex: 1;
+      width: 100%;
+      height: 100%;
       margin: 0;
       padding: 16px;
-      padding-top: 32px; /* 为复制按钮留出空间 */
-      white-space: pre-wrap;
-      word-break: break-all;
-      font-size: 12px;
+      padding-top: 32px;
+      background-color: #111827;
+      color: #e5e7eb;
+      border: none;
+      resize: none;
       font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 12px;
       line-height: 1.6;
-      color: var(--code-text);
-      overflow-y: auto; /* 只有这里滚动 */
-      -webkit-font-smoothing: antialiased;
+      outline: none;
+      display: block;
+    }
+    
+    .code-textarea::selection {
+      background: rgba(37, 99, 235, 0.3);
+    }
+    
+    /* 自定义滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
     
     /* 复制按钮 */
@@ -340,10 +374,6 @@ export const UI_HTML = `
     
     .btn-copy:active {
       transform: translateY(1px);
-    }
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-      border-bottom: none;
     }
     
     /* 底部固定操作栏 */
@@ -381,6 +411,139 @@ export const UI_HTML = `
       content: "↓";
       font-weight: bold;
     }
+    
+    /* 分析模式选择器 */
+    .mode-selector {
+      display: flex;
+      gap: 2px;
+      padding: 3px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    
+    .mode-option {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    
+    .mode-option:hover {
+      color: var(--text);
+    }
+    
+    .mode-option.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* 主内容区 - 双栏布局 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      margin-top: 12px;
+      margin-bottom: 0; /* 底部无外边距 */
+      padding-bottom: 12px; /* 给一点底部内边距，保持视觉平衡，但必须在容器内 */
+    }
+    
+    /* 左侧：预览区 */
+    .left-panel {
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    
+    /* 右侧：数据区 */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0; /* 防止溢出 */
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    /* 截图预览区 - 适配侧边栏 */
+    .screenshot-preview {
+      padding: 6px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .screenshot-preview img {
+      width: 100%;
+      border-radius: 4px;
+      max-height: 200px;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+    
+    .screenshot-info {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+    }
+    
+    /* Tab 容器 - 填满右侧面板 */
+    #tabsContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: none;
+      border-radius: 0;
+      margin: 0;
+      min-height: 0;
+    }
+    
+    /* 模型选择器 */
+    .model-selector-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .select-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    
+    .model-select {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-secondary);
+      color: var(--text);
+      cursor: pointer;
+    }
+    
+    .model-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
   </style>
 </head>
 <body>
@@ -388,6 +551,22 @@ export const UI_HTML = `
     <div class="input-wrapper">
       <input type="password" id="apiKey" placeholder="请输入 OpenAI API Key (sk-...)" />
     </div>
+    
+    <!-- 模型选择器 -->
+    <div class="model-selector-wrapper">
+      <label for="modelSelect" class="select-label">模型</label>
+      <select id="modelSelect" class="model-select">
+        <!-- Options will be populated dynamically -->
+      </select>
+    </div>
+    
+    <!-- 分析模式选择器 -->
+    <div class="mode-selector" id="modeSelector">
+      <button class="mode-option active" data-mode="structure-only">仅结构</button>
+      <button class="mode-option" data-mode="hybrid">混合模式</button>
+      <button class="mode-option" data-mode="visual-only">仅截图</button>
+    </div>
+    
     <div class="button-group">
       <button class="btn-primary" id="extractBtn">
         <span>提取元数据</span>
@@ -402,50 +581,74 @@ export const UI_HTML = `
       <span id="statusText">准备就绪</span>
       <span id="modelInfo" style="margin-left: auto; font-size: 11px; color: var(--text-secondary);"></span>
     </div>
-    
-    <!-- 统计信息 -->
-    <div id="stats" class="stats" style="display: none;">
-      <div class="stat-item">
-        <span id="nodeCount" class="stat-value">0</span>
-        <span class="stat-label">节点数</span>
-      </div>
-      <div class="stat-item">
-        <span id="columnCount" class="stat-value">0</span>
-        <span class="stat-label">表格列</span>
-      </div>
-      <div class="stat-item">
-        <span id="fieldCount" class="stat-value">0</span>
-        <span class="stat-label">搜索项</span>
-      </div>
-    </div>
   </div>
-  
-  <!-- Tab 容器 -->
-  <div id="tabsContainer" style="display: none;">
-    <div class="tabs">
-      <button class="tab active" data-tab="metadata">Metadata</button>
-      <button class="tab" data-tab="nodeTree">Node Tree</button>
-      <button class="tab" data-tab="inference" id="inferenceTab" style="display: none;">Inference</button>
-    </div>
     
-    <div id="metadata" class="tab-content active">
-      <button class="btn-copy" data-target="metadataJson">复制</button>
-      <pre id="metadataJson"></pre>
-    </div>
-    <div id="nodeTree" class="tab-content">
-      <button class="btn-copy" data-target="nodeTreeJson">复制</button>
-      <pre id="nodeTreeJson"></pre>
-    </div>
-    <div id="inference" class="tab-content">
-      <button class="btn-copy" data-target="inferenceJson">复制</button>
-      <pre id="inferenceJson"></pre>
-    </div>
-  </div>
+    <div class="main-content">
+      <!-- 左侧面板：预览与辅助信息 -->
+      <div class="left-panel">
+        <!-- 统计信息 -->
+        <div id="stats" class="stats" style="display: none;">
+          <div class="stat-item">
+            <span id="nodeCount" class="stat-value">0</span>
+            <span class="stat-label">节点数</span>
+          </div>
+          <div class="stat-item">
+            <span id="columnCount" class="stat-value">0</span>
+            <span class="stat-label">表格列</span>
+          </div>
+          <div class="stat-item">
+            <span id="fieldCount" class="stat-value">0</span>
+            <span class="stat-label">搜索项</span>
+          </div>
+        </div>
+        
+        <!-- 截图预览区 -->
+        <div id="screenshotPreview" class="screenshot-preview" style="display: none;">
+          <img id="screenshotImg" src="" alt="Screenshot" />
+          <div class="screenshot-info">
+            <span id="screenshotSize">0 KB</span>
+            <span id="screenshotMode">混合模式</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧面板：数据与结果 -->
+      <div class="right-panel">
+        <!-- Tab 容器 -->
+          <div class="tabs-header">
+            <div class="tab-group">
+              <button class="tab active" data-tab="metadata">Metadata</button>
+              <button class="tab" data-tab="nodeTree">Node Tree</button>
+              <button class="tab" data-tab="inference" id="inferenceTab" style="display: none;">Inference</button>
+            </div>
+            <button id="downloadBtn" class="btn-download-mini" title="下载元数据 JSON">
+              <span>JSON</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 8.5L2.5 5H4.5V1.5H7.5V5H9.5L6 8.5Z" fill="currentColor"/>
+                <path d="M2.5 9.5H9.5V10.5H2.5V9.5Z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+          
+          <div id="metadata" class="tab-content active">
+            <button class="btn-copy" data-target="metadataJson">复制</button>
+            <textarea id="metadataJson" class="code-textarea" readonly>System Ready.</textarea>
+          </div>
+          <div id="nodeTree" class="tab-content">
+            <button class="btn-copy" data-target="nodeTreeJson">复制</button>
+            <textarea id="nodeTreeJson" class="code-textarea" readonly>Waiting for Node Tree...</textarea>
+          </div>
+          <div id="inference" class="tab-content">
+            <button class="btn-copy" data-target="inferenceContentRaw">复制</button>
+            <pre id="inferenceJson" style="display: none;"></pre> <!-- 保留 pre 用于 markdown 渲染结果? 不，结果通常也是 JSON -->
+            <textarea id="inferenceContentRaw" class="code-textarea" readonly></textarea>
+            <div id="inferenceContentRendered" class="result-content markdown-body" style="display:none; padding: 16px;"></div>
+          </div>
+        </div>
+      </div>
   
   <!-- 底部操作栏 -->
-  <div id="footerActions" class="bottom-bar" style="display: none;">
-    <button class="btn-download" id="downloadBtn">下载元数据 JSON</button>
-  </div>
+
 
   <script>
     // 配置对象，从主线程接收
@@ -462,7 +665,7 @@ export const UI_HTML = `
     const statusDot = document.getElementById('statusDot');
     const statsDiv = document.getElementById('stats');
     const tabsContainer = document.getElementById('tabsContainer');
-    const footerActions = document.getElementById('footerActions');
+    // const footerActions = document.getElementById('footerActions'); // Removed
     const metadataJson = document.getElementById('metadataJson');
     const nodeTreeJson = document.getElementById('nodeTreeJson');
     const inferenceTab = document.getElementById('inferenceTab');
@@ -475,6 +678,46 @@ export const UI_HTML = `
     let currentMetadata = null;
     let currentNodeTree = null;
     let currentInference = null;
+    let currentScreenshot = null;
+    let currentMode = 'structure-only';
+    
+    // 截图预览元素
+    const screenshotPreview = document.getElementById('screenshotPreview');
+    const screenshotImg = document.getElementById('screenshotImg');
+    const screenshotSize = document.getElementById('screenshotSize');
+    const screenshotModeEl = document.getElementById('screenshotMode');
+    
+    // 模式选择器逻辑
+    document.querySelectorAll('.mode-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        console.log('[UI] Mode changed:', currentMode);
+        
+        // 如果选择了混合/视觉模式，自动切换到视觉模型
+        const modelSelect = document.getElementById('modelSelect');
+        if (currentMode !== 'structure-only' && modelSelect) {
+          modelSelect.value = 'GLM-4.6V-Flash';
+          appConfig.model = 'GLM-4.6V-Flash';
+        }
+      });
+    });
+    
+    // 模型选择器逻辑
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+      modelSelect.addEventListener('change', (e) => {
+        appConfig.model = e.target.value;
+        console.log('[UI] Model changed:', appConfig.model);
+        
+        // 更新状态栏显示
+        const modelInfo = document.getElementById('modelInfo');
+        if (modelInfo) {
+          modelInfo.textContent = appConfig.model;
+        }
+      });
+    }
     
     // 状态更新工具
     function updateStatus(type, text) {
@@ -582,6 +825,42 @@ export const UI_HTML = `
           modelInfo.textContent = appConfig.model;
         }
         
+        // 同步模型选择器
+        const modelSelect = document.getElementById('modelSelect');
+        if (modelSelect) {
+          // 清空现有选项
+          modelSelect.innerHTML = '';
+          
+          // 获取可用模型列表 (优先使用配置中的列表)
+          const models = msg.payload.availableModels || [
+            { value: 'glm-4-flash', label: 'GLM-4-Flash (快速)' } // Fallback
+          ];
+          
+          // 填充选项
+          models.forEach(m => {
+            const option = document.createElement('option');
+            option.value = m.value;
+            option.textContent = m.label;
+            modelSelect.appendChild(option);
+          });
+
+          // 选中当前模型
+          if (appConfig.model) {
+            // 检查配置的模型是否在列表中
+            const found = models.find(m => m.value === appConfig.model);
+            if (found) {
+              modelSelect.value = appConfig.model;
+            } else {
+              // 如果配置的模型不在列表中，添加一个临时选项并选中
+              const newOption = document.createElement('option');
+              newOption.value = appConfig.model;
+              newOption.textContent = appConfig.model + ' (Configured)';
+              modelSelect.appendChild(newOption);
+              modelSelect.value = appConfig.model;
+            }
+          }
+        }
+        
         if (msg.payload.apiKey) {
           // 隐藏 API Key 输入框
           const wrapper = document.querySelector('.input-wrapper');
@@ -597,7 +876,7 @@ export const UI_HTML = `
         try {
           updateStatus('loading', '正在推断...');
           
-          const result = await callOpenAI(msg.prompt);
+          const result = await callOpenAI(msg.prompt, msg.screenshot);
           
           parent.postMessage({
             pluginMessage: {
@@ -621,6 +900,7 @@ export const UI_HTML = `
       } else if (msg.type === 'extract-result') {
         currentMetadata = msg.payload.metadata;
         currentNodeTree = msg.payload.nodeTree;
+        currentScreenshot = msg.payload.screenshot || null;
         currentInference = null;
         
         extractBtn.disabled = false;
@@ -635,15 +915,43 @@ export const UI_HTML = `
         fieldCountEl.textContent = '-';
         statsDiv.style.display = 'flex';
         
-        metadataJson.textContent = JSON.stringify(msg.payload.metadata, null, 2);
-        nodeTreeJson.textContent = JSON.stringify(msg.payload.nodeTree, null, 2);
-        inferenceJson.textContent = '';
+        // 显示截图预览
+        if (currentScreenshot) {
+          screenshotImg.src = currentScreenshot;
+          const sizeKB = Math.round((currentScreenshot.length * 3) / 4 / 1024);
+          screenshotSize.textContent = sizeKB + ' KB';
+          screenshotModeEl.textContent = currentMode === 'hybrid' ? '混合模式' : '仅截图';
+          screenshotPreview.style.display = 'block';
+        } else {
+          screenshotPreview.style.display = 'none';
+        }
+        
+        if (msg.payload.metadata) {
+          const jsonStr = JSON.stringify(msg.payload.metadata, null, 2);
+          if (metadataJson) {
+            metadataJson.value = jsonStr; // 修正为 value
+            console.log('[UI] Metadata set to textarea, length:', jsonStr.length);
+          }
+        } else {
+          if (metadataJson) metadataJson.value = '// Error: No metadata received';
+        }
+        
+        if (nodeTreeJson) {
+          nodeTreeJson.value = msg.payload.nodeTree // 修正为 value
+            ? JSON.stringify(msg.payload.nodeTree, null, 2) 
+            : '// Error: No node tree';
+        }
+        
+        if (document.getElementById('inferenceContentRaw')) {
+            document.getElementById('inferenceContentRaw').value = '';
+        }
         if (inferenceTab) {
           inferenceTab.style.display = 'none';
         }
         
-        tabsContainer.style.display = 'flex';
-        footerActions.style.display = 'block';
+        // tabsContainer.style.display = 'flex'; // 保持 header 显示，只切换内容? 不，整个 container 隐显
+        if (tabsContainer) tabsContainer.style.display = 'flex';
+        // footerActions.style.display = 'block'; // 已移除
         setActiveTab('metadata');
       } else if (msg.type === 'extract-error') {
         extractBtn.disabled = false;
@@ -658,7 +966,17 @@ export const UI_HTML = `
         inferBtn.innerHTML = '<span>重新推断</span>';
         updateStatus('success', '推断完成');
         
-        inferenceJson.textContent = JSON.stringify(currentInference, null, 2);
+        const jsonStr = JSON.stringify(currentInference, null, 2);
+        
+        // 更新隐形 pre 用于其他可能的逻辑（或者移除它，但为了安全起见先保留并同步）
+        if (inferenceJson) inferenceJson.textContent = jsonStr;
+        
+        // 关键：更新显示的 Textarea
+        const inferenceTextarea = document.getElementById('inferenceContentRaw');
+        if (inferenceTextarea) {
+            inferenceTextarea.value = jsonStr;
+        }
+
         if (inferenceTab) {
           inferenceTab.style.display = 'inline-flex';
         }
@@ -677,7 +995,7 @@ export const UI_HTML = `
       }
     };
     
-    async function callOpenAI(systemPrompt) {
+    async function callOpenAI(systemPrompt, screenshot) {
       // 优先使用 appConfig 配置，否则使用输入框中的值
       const apiKey = appConfig.apiKey || apiKeyInput.value.trim();
       if (!apiKey) {
@@ -688,7 +1006,48 @@ export const UI_HTML = `
         throw new Error('API 地址未配置');
       }
       
-      console.log('[UI] Calling AI API...', { url: appConfig.apiBaseUrl, model: appConfig.model });
+      // 构建消息内容（支持多模态）
+      // 智谱 GLM API 格式：content 数组包含 text 和 image_url
+      let messages = [];
+      
+      if (screenshot) {
+        // Vision API: GLM 格式 - 图片和文本在同一个 content 数组中
+        console.log('[UI] Using Vision API with screenshot');
+        messages.push({
+          role: 'user',
+          content: [
+            { 
+              type: 'image_url', 
+              image_url: { 
+                url: screenshot  // GLM 支持 base64 data URL
+              } 
+            },
+            { 
+              type: 'text', 
+              text: systemPrompt 
+            }
+          ]
+        });
+      } else {
+        // 纯文本模式
+        messages.push({ role: 'user', content: systemPrompt });
+      }
+      
+      console.log('[UI] Calling AI API...', { url: appConfig.apiBaseUrl, model: appConfig.model, hasScreenshot: !!screenshot });
+      
+      // 如果有截图，自动切换到 Vision 模型
+      // glm-4.7 不支持图片，需要使用 glm-4v-flash
+      let modelToUse = appConfig.model;
+      if (screenshot) {
+        // 检查当前模型是否支持 Vision
+        const visionModels = ['GLM-4.6V-Flash'];
+        const isVisionModel = visionModels.some(v => appConfig.model.toLowerCase().includes(v.toLowerCase()));
+        
+        if (!isVisionModel) {
+          modelToUse = 'GLM-4.6V-Flash';  // 自动切换到 Vision 模型
+          console.log('[UI] Auto-switching to Vision model:', modelToUse);
+        }
+      }
       
       const response = await fetch(appConfig.apiBaseUrl, {
         method: 'POST',
@@ -697,8 +1056,8 @@ export const UI_HTML = `
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: appConfig.model,
-          messages: [{ role: 'user', content: systemPrompt }],
+          model: modelToUse,
+          messages: messages,
           temperature: 0.3,
           max_tokens: 4000
         })
@@ -756,7 +1115,12 @@ export const UI_HTML = `
     
     // 提取按钮点击
     extractBtn.onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'start-extract' } }, '*');
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'start-extract',
+          mode: currentMode
+        } 
+      }, '*');
       extractBtn.disabled = true;
       extractBtn.innerHTML = '<span>提取中...</span>';
       inferBtn.disabled = true;
@@ -764,11 +1128,18 @@ export const UI_HTML = `
       tabsContainer.style.display = 'none';
       footerActions.style.display = 'none';
       statsDiv.style.display = 'none';
+      screenshotPreview.style.display = 'none';
     };
 
     // 推断按钮点击
     inferBtn.onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'start-inference' } }, '*');
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'start-inference',
+          mode: currentMode,
+          hasScreenshot: !!currentScreenshot
+        } 
+      }, '*');
       inferBtn.disabled = true;
       inferBtn.innerHTML = '<span>推断中...</span>';
       updateStatus('loading', '正在推断页面结构...');

@@ -2,7 +2,8 @@ import { Processor } from './processor';
 import { UI_HTML } from './ui';
 import { ConfigManager } from './config';
 import { buildPageAnalysisPrompt } from './ai/prompts/page-analysis';
-import { NodeMetadata } from './types/metadata';
+import { buildHybridAnalysisPrompt } from './ai/prompts/hybrid-analysis';
+import { NodeMetadata, AnalysisMode, AnalysisConfig, DEFAULT_ANALYSIS_CONFIG } from './types/metadata';
 
 /**
  * 提取原始节点树（用于调试和对比）
@@ -50,7 +51,7 @@ async function main() {
   console.log(`Processing root node: ${rootNode.name} (Type: ${rootNode.type})`);
 
   // Show UI for API Key input and analysis
-  figma.showUI(UI_HTML, { width: 400, height: 500, title: "AI 设计稿解析" });
+  figma.showUI(UI_HTML, { width: 800, height: 600, title: "AI 设计稿解析" });
 
   // 发送配置信息给 UI
   const config = ConfigManager.getInstance().getConfig();
@@ -61,9 +62,10 @@ async function main() {
 
   const processor = new Processor();
   let lastMetadata: NodeMetadata | null = null;
+  let lastScreenshot: string | null = null;
   const pendingAiRequests = new Map<string, { resolve: (result: any) => void; reject: (error: Error) => void; timeoutId: number }>();
 
-  const requestAI = (prompt: string, metadata: NodeMetadata): Promise<any> => {
+  const requestAI = (prompt: string, metadata: NodeMetadata, screenshot?: string): Promise<any> => {
     return new Promise((resolve, reject) => {
       const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
       console.log('[AI] Sending request:', requestId);
@@ -80,7 +82,8 @@ async function main() {
         requestId,
         requestType: 'page-analysis',
         prompt,
-        metadata
+        metadata,
+        screenshot  // 传递截图给 UI 进行 API 调用
       });
     });
   };
@@ -108,16 +111,30 @@ async function main() {
 
     if (msg.type === 'start-extract') {
       try {
+        const mode: AnalysisMode = msg.mode || 'structure-only';
+        console.log('[Main] Start extract with mode:', mode);
         figma.notify("开始提取元数据...");
 
-        const result = await processor.extract(rootNode);
+        // 根据模式构建配置
+        const analysisConfig: AnalysisConfig = {
+          ...DEFAULT_ANALYSIS_CONFIG,
+          mode,
+          screenshot: {
+            ...DEFAULT_ANALYSIS_CONFIG.screenshot,
+            enabled: mode === 'hybrid' || mode === 'visual-only'
+          }
+        };
+
+        const result = await processor.extract(rootNode, analysisConfig);
         lastMetadata = result.metadata;
+        lastScreenshot = result.screenshot || null;
 
         figma.ui.postMessage({
           type: 'extract-result',
           payload: {
             metadata: result.metadata,
-            nodeTree: extractRawNodeTree(rootNode)
+            nodeTree: extractRawNodeTree(rootNode),
+            screenshot: result.screenshot
           }
         });
 
@@ -142,9 +159,21 @@ async function main() {
       }
 
       try {
+        const mode: AnalysisMode = msg.mode || 'structure-only';
+        const hasScreenshot = msg.hasScreenshot && !!lastScreenshot;
+        
         figma.notify('开始推断...');
-        const prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
-        const inferenceResult = await requestAI(prompt, lastMetadata);
+        console.log('[Main] Start inference with mode:', mode, 'hasScreenshot:', hasScreenshot);
+        
+        // 根据模式选择 Prompt
+        let prompt: string;
+        if (mode === 'hybrid' || mode === 'visual-only') {
+          prompt = buildHybridAnalysisPrompt(JSON.stringify(lastMetadata, null, 2), hasScreenshot);
+        } else {
+          prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
+        }
+        
+        const inferenceResult = await requestAI(prompt, lastMetadata, hasScreenshot ? lastScreenshot! : undefined);
 
         figma.ui.postMessage({
           type: 'inference-result',
