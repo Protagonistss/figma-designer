@@ -1,2 +1,3 @@
-export { AIService, createAIService } from './aiService';
-export { FigmaService, figmaService, PluginMessage, ExtractMessage, InferenceMessage, CloseMessage } from './figmaService';
+export { AIService, createAIService } from './api';
+export { FigmaService, figmaService } from './figmaService';
+export type { PluginMessage, ExtractMessage, InferenceMessage, CloseMessage } from './figmaService';

@@ -10,7 +10,9 @@ function loadEnv() {
   };
   
   try {
-    const envPath = path.resolve(__dirname, '.env');
+    // 从项目根目录加载 .env 文件
+    const envPath = path.resolve(__dirname, '../../.env');
+    console.log('[tsup] Loading .env from:', envPath);
     if (fs.existsSync(envPath)) {
       const content = fs.readFileSync(envPath, 'utf-8');
       content.split('\n').forEach(line => {

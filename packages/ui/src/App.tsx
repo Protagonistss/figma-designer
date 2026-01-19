@@ -12,7 +12,8 @@ import { ConfigPanel, StatusBar, ResultPanel } from './components';
 const DEFAULT_CONFIG: AppConfig = {
   apiKey: '',
   apiBaseUrl: '',
-  model: ''
+  model: '',
+  availableModels: []
 };
 
 export default function App() {
@@ -29,6 +30,12 @@ export default function App() {
 
   // --- AI Request Handler ---
   const { handleAIRequest } = useAIRequest(config);
+
+  // --- 启动时请求配置 ---
+  useEffect(() => {
+    console.log('[UI] Requesting config from plugin...');
+    parent.postMessage({ pluginMessage: { type: 'get-config' } }, '*');
+  }, []);
 
   // --- Figma Message Handler ---
   useEffect(() => {
@@ -49,9 +56,12 @@ export default function App() {
 
   useFigmaMessage({
     onConfig: (payload) => {
+      console.log('[UI] onConfig called with payload:', payload);
+      console.log('[UI] payload.apiKey:', payload?.apiKey ? '(exists)' : '(empty)');
+      console.log('[UI] payload.availableModels:', payload?.availableModels);
       updateConfig(payload);
       if (payload.apiKey) {
-        updateStatus('success', '已加载本地配置');
+        setStatus({ type: 'success', text: '已加载本地配置' });
       }
     },
     onExtractResult: (payload) => {

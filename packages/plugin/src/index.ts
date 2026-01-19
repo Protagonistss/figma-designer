@@ -52,12 +52,7 @@ async function main() {
   // Show UI for API Key input and analysis
   figma.showUI(UI_HTML, { width: 800, height: 600, title: "AI 设计稿解析" });
 
-  // 发送配置信息给 UI
-  const config = ConfigManager.getInstance().getConfig();
-  figma.ui.postMessage({
-    type: 'config',
-    payload: config
-  });
+  // 配置将在 UI 请求时发送（通过 get-config 消息）
 
   const processor = new Processor();
   let lastMetadata: NodeMetadata | null = null;
@@ -89,6 +84,17 @@ async function main() {
 
   // Handle messages from UI
   figma.ui.onmessage = async (msg: any) => {
+    // 响应 UI 的配置请求
+    if (msg.type === 'get-config') {
+      const config = ConfigManager.getInstance().getConfig();
+      console.log('[Plugin] Sending config to UI:', config);
+      figma.ui.postMessage({
+        type: 'config',
+        payload: config
+      });
+      return;
+    }
+
     if (msg.type === 'ai-response' && msg.requestId) {
       const pending = pendingAiRequests.get(msg.requestId);
       if (!pending) {

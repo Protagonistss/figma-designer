@@ -1,5 +1,4 @@
-import { useEffect, useCallback } from 'react';
-import { Status } from '@figma-designer/shared';
+import { useEffect, useCallback, useRef } from 'react';
 
 interface MessageHandlers {
   onConfig?: (payload: any) => void;
@@ -10,6 +9,10 @@ interface MessageHandlers {
 }
 
 export function useFigmaMessage(handlers: MessageHandlers) {
+  // 使用 ref 保存 handlers，确保事件监听器中始终访问最新的 handlers
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
   const postMessage = useCallback((type: string, payload?: any) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
   }, []);
@@ -21,28 +24,29 @@ export function useFigmaMessage(handlers: MessageHandlers) {
 
       console.log('[UI] Received message:', msg.type, msg);
 
+      const currentHandlers = handlersRef.current;
       switch (msg.type) {
         case 'config':
-          handlers.onConfig?.(msg.payload);
+          currentHandlers.onConfig?.(msg.payload);
           break;
         case 'extract-result':
-          handlers.onExtractResult?.(msg.payload);
+          currentHandlers.onExtractResult?.(msg.payload);
           break;
         case 'extract-error':
-          handlers.onExtractError?.(msg.payload);
+          currentHandlers.onExtractError?.(msg.payload);
           break;
         case 'inference-result':
-          handlers.onInferenceResult?.(msg.payload);
+          currentHandlers.onInferenceResult?.(msg.payload);
           break;
         case 'inference-error':
-          handlers.onInferenceError?.(msg.payload);
+          currentHandlers.onInferenceError?.(msg.payload);
           break;
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handlers]);
+  }, []); // 空依赖数组，只在挂载时注册一次
 
   return { postMessage };
 }
