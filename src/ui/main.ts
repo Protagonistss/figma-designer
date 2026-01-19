@@ -544,6 +544,73 @@ export const UI_HTML = `
       outline: none;
       border-color: var(--primary);
     }
+
+    /* JSON Tree Viewer 样式 */
+    .json-tree {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #e5e7eb;
+      padding: 16px;
+      overflow: auto;
+      height: 100%;
+    }
+    
+    .json-node {
+      margin-left: 14px;
+    }
+    
+    .json-key {
+      color: #9cdcfe;
+      margin-right: 4px;
+    }
+    
+    .json-string { color: #ce9178; }
+    .json-number { color: #b5cea8; }
+    .json-boolean { color: #569cd6; }
+    .json-null { color: #569cd6; }
+    
+    .json-toggle {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 4px;
+      cursor: pointer;
+      position: relative;
+      color: #c586c0;
+    }
+    
+    .json-toggle::before {
+      content: '▼';
+      font-size: 8px;
+      position: absolute;
+      top: 1px;
+      left: 0;
+      transition: transform 0.1s;
+    }
+    
+    .json-toggle.collapsed::before {
+      transform: rotate(-90deg);
+    }
+    
+    .json-children {
+      display: block;
+    }
+    
+    .json-children.collapsed {
+      display: none;
+    }
+    
+    .json-placeholder {
+      color: #808080;
+      font-style: italic;
+      cursor: pointer;
+      display: none;
+    }
+    
+    .json-children.collapsed + .json-placeholder {
+      display: inline;
+    }
   </style>
 </head>
 <body>
@@ -631,12 +698,14 @@ export const UI_HTML = `
           </div>
           
           <div id="metadata" class="tab-content active">
-            <button class="btn-copy" data-target="metadataJson">复制</button>
-            <textarea id="metadataJson" class="code-textarea" readonly>System Ready.</textarea>
+            <button class="btn-copy" data-target="metadataJsonHidden">复制</button>
+            <div id="metadataViewer" class="json-tree">System Ready.</div>
+            <textarea id="metadataJsonHidden" style="display:none"></textarea>
           </div>
           <div id="nodeTree" class="tab-content">
-            <button class="btn-copy" data-target="nodeTreeJson">复制</button>
-            <textarea id="nodeTreeJson" class="code-textarea" readonly>Waiting for Node Tree...</textarea>
+            <button class="btn-copy" data-target="nodeTreeJsonHidden">复制</button>
+            <div id="nodeTreeViewer" class="json-tree">Waiting for Node Tree...</div>
+            <textarea id="nodeTreeJsonHidden" style="display:none"></textarea>
           </div>
           <div id="inference" class="tab-content">
             <button class="btn-copy" data-target="inferenceContentRaw">复制</button>
@@ -666,8 +735,14 @@ export const UI_HTML = `
     const statsDiv = document.getElementById('stats');
     const tabsContainer = document.getElementById('tabsContainer');
     // const footerActions = document.getElementById('footerActions'); // Removed
-    const metadataJson = document.getElementById('metadataJson');
-    const nodeTreeJson = document.getElementById('nodeTreeJson');
+    // Elements for Metadata
+    const metadataViewer = document.getElementById('metadataViewer');
+    const metadataJsonHidden = document.getElementById('metadataJsonHidden');
+    
+    // Elements for Node Tree
+    const nodeTreeViewer = document.getElementById('nodeTreeViewer');
+    const nodeTreeJsonHidden = document.getElementById('nodeTreeJsonHidden');
+    
     const inferenceTab = document.getElementById('inferenceTab');
     const inferenceJson = document.getElementById('inferenceJson');
     const nodeCountEl = document.getElementById('nodeCount');
@@ -753,12 +828,17 @@ export const UI_HTML = `
     }
     
     // 绑定复制按钮事件
+    // 绑定复制按钮事件
     document.querySelectorAll('.btn-copy').forEach(btn => {
       btn.addEventListener('click', () => {
         const targetId = btn.dataset.target;
         const targetEl = document.getElementById(targetId);
-        if (targetEl && targetEl.textContent) {
-          copyToClipboard(targetEl.textContent, btn);
+        if (targetEl) {
+          // 优先读取 value (textarea/input), 否则读取 textContent
+          const content = targetEl.value || targetEl.textContent;
+          if (content) {
+            copyToClipboard(content, btn);
+          }
         }
       });
     });
@@ -928,18 +1008,26 @@ export const UI_HTML = `
         
         if (msg.payload.metadata) {
           const jsonStr = JSON.stringify(msg.payload.metadata, null, 2);
-          if (metadataJson) {
-            metadataJson.value = jsonStr; // 修正为 value
-            console.log('[UI] Metadata set to textarea, length:', jsonStr.length);
+          if (metadataJsonHidden) {
+            metadataJsonHidden.value = jsonStr; 
+          }
+          if (metadataViewer) {
+             renderJson(msg.payload.metadata, metadataViewer);
           }
         } else {
-          if (metadataJson) metadataJson.value = '// Error: No metadata received';
+          if (metadataViewer) metadataViewer.innerText = '// Error: No metadata received';
         }
         
-        if (nodeTreeJson) {
-          nodeTreeJson.value = msg.payload.nodeTree // 修正为 value
-            ? JSON.stringify(msg.payload.nodeTree, null, 2) 
-            : '// Error: No node tree';
+        if (msg.payload.nodeTree) {
+          const nodeTreeStr = JSON.stringify(msg.payload.nodeTree, null, 2);
+          if (nodeTreeJsonHidden) {
+             nodeTreeJsonHidden.value = nodeTreeStr;
+          }
+          if (nodeTreeViewer) {
+            renderJson(msg.payload.nodeTree, nodeTreeViewer);
+          }
+        } else {
+           if (nodeTreeViewer) nodeTreeViewer.innerText = '// Error: No node tree';
         }
         
         if (document.getElementById('inferenceContentRaw')) {
@@ -1113,6 +1201,101 @@ export const UI_HTML = `
       }
     }
     
+    // JSON 渲染工具
+    function renderJson(data, container) {
+      if (!data) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = '';
+      container.appendChild(createJsonNode(data));
+    }
+
+    function createJsonNode(data) {
+      if (data === null) return createSpan('null', 'json-null');
+      if (typeof data === 'boolean') return createSpan(data, 'json-boolean');
+      if (typeof data === 'number') return createSpan(data, 'json-number');
+      if (typeof data === 'string') return createSpan('"' + data + '"', 'json-string');
+
+      if (Array.isArray(data)) {
+        if (data.length === 0) return createSpan('[]', '');
+        return createCollapsible(data, '[', ']');
+      }
+
+      if (typeof data === 'object') {
+        if (Object.keys(data).length === 0) return createSpan('{}', '');
+        return createCollapsible(data, '{', '}');
+      }
+      
+      return createSpan(String(data), '');
+    }
+
+    function createSpan(text, className) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      if (className) span.className = className;
+      return span;
+    }
+
+    function createCollapsible(data, openChar, closeChar) {
+      const fragment = document.createDocumentFragment();
+      const toggle = document.createElement('span');
+      toggle.className = 'json-toggle';
+      toggle.onclick = (e) => {
+        const t = e.target;
+        t.classList.toggle('collapsed');
+        const children = t.nextElementSibling; // Skip text node (brace), go to div
+        if (children) children.classList.toggle('collapsed');
+      };
+      fragment.appendChild(toggle);
+
+      fragment.appendChild(document.createTextNode(openChar));
+
+      const childrenContainer = document.createElement('div');
+      childrenContainer.className = 'json-children';
+
+      const isArray = Array.isArray(data);
+      const keys = Object.keys(data);
+      keys.forEach((key, index) => {
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = 'json-node';
+        
+        if (!isArray) {
+          const keySpan = document.createElement('span');
+          keySpan.className = 'json-key';
+          keySpan.textContent = '"' + key + '":';
+          nodeDiv.appendChild(keySpan);
+        }
+
+        nodeDiv.appendChild(createJsonNode(data[key]));
+        
+        if (index < keys.length - 1) {
+          nodeDiv.appendChild(document.createTextNode(','));
+        }
+        
+        childrenContainer.appendChild(nodeDiv);
+      });
+
+      fragment.appendChild(childrenContainer);
+      
+      const placeholder = document.createElement('span');
+      placeholder.className = 'json-placeholder';
+      placeholder.textContent = '...';
+      placeholder.onclick = (e) => {
+        // 点击 ... 也能展开
+        const p = e.target;
+        const children = p.previousElementSibling;
+        const t = children.previousElementSibling; 
+        children.classList.remove('collapsed');
+        t.classList.remove('collapsed');
+      };
+      
+      fragment.appendChild(placeholder);
+      fragment.appendChild(document.createTextNode(closeChar));
+
+      return fragment;
+    }
+
     // 提取按钮点击
     extractBtn.onclick = () => {
       parent.postMessage({ 
@@ -1126,7 +1309,7 @@ export const UI_HTML = `
       inferBtn.disabled = true;
       updateStatus('loading', '正在提取设计稿数据...');
       tabsContainer.style.display = 'none';
-      footerActions.style.display = 'none';
+      if(typeof footerActions !== 'undefined') footerActions.style.display = 'none'; // Safety check
       statsDiv.style.display = 'none';
       screenshotPreview.style.display = 'none';
     };

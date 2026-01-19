@@ -2,6 +2,7 @@
 export interface NodeMetadata {
   type: string;  // FRAME, TEXT, INSTANCE, etc.
   text?: string; // 文本内容（仅文本节点）
+  characters?: string; // 业务字段名（原始文本）
   name?: string; // 节点名（兜底标签）
   x: number;     // X 坐标（布局推断）
   y: number;     // Y 坐标（布局推断）

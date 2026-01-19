@@ -25,6 +25,7 @@ export class MetadataExtractor {
       const characters = (node as TextNode).characters;
       if (characters.trim().length > 0) {
         metadata.text = characters;
+        metadata.characters = characters;
       }
     }
     
