@@ -14,25 +14,11 @@ export class MetadataExtractor {
   
   private extractNode(node: SceneNode, depth: number): NodeMetadata {
     const metadata: NodeMetadata = {
-      id: node.id,
-      name: node.name,
       type: node.type,
-      visible: node.visible,
+      name: node.name,
       x: Math.round(node.x),
-      y: Math.round(node.y),
-      w: Math.round(node.width),
-      h: Math.round(node.height)
+      y: Math.round(node.y)
     };
-
-    const abs = node.absoluteBoundingBox;
-    if (abs) {
-      metadata.abs = {
-        x: Math.round(abs.x),
-        y: Math.round(abs.y),
-        w: Math.round(abs.width),
-        h: Math.round(abs.height)
-      };
-    }
     
     // 仅在文本节点上保留原始文本
     if (node.type === 'TEXT') {

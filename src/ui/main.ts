@@ -400,6 +400,7 @@ export const UI_HTML = `
     <div class="status-bar">
       <div id="statusDot" class="status-dot"></div>
       <span id="statusText">准备就绪</span>
+      <span id="modelInfo" style="margin-left: auto; font-size: 11px; color: var(--text-secondary);"></span>
     </div>
     
     <!-- 统计信息 -->
@@ -447,6 +448,13 @@ export const UI_HTML = `
   </div>
 
   <script>
+    // 配置对象，从主线程接收
+    let appConfig = {
+      apiKey: '',
+      apiBaseUrl: '',
+      model: ''
+    };
+    
     const apiKeyInput = document.getElementById('apiKey');
     const extractBtn = document.getElementById('extractBtn');
     const inferBtn = document.getElementById('inferBtn');
@@ -555,10 +563,6 @@ export const UI_HTML = `
       return count;
     }
     
-    // 保存配置的 API Key
-    let configuredApiKey = '';
-    const apiKeyWrapper = document.querySelector('.input-wrapper');
-    
     // 处理来自主线程的消息
     window.onmessage = async (event) => {
       const msg = event.data.pluginMessage;
@@ -567,11 +571,22 @@ export const UI_HTML = `
       // 处理配置消息
       if (msg.type === 'config') {
         console.log('[UI] Received config:', msg.payload);
+        // 更新完整配置
+        if (msg.payload.apiKey) appConfig.apiKey = msg.payload.apiKey;
+        if (msg.payload.apiBaseUrl) appConfig.apiBaseUrl = msg.payload.apiBaseUrl;
+        if (msg.payload.model) appConfig.model = msg.payload.model;
+        
+        // 显示当前模型
+        const modelInfo = document.getElementById('modelInfo');
+        if (modelInfo && appConfig.model) {
+          modelInfo.textContent = appConfig.model;
+        }
+        
         if (msg.payload.apiKey) {
-          configuredApiKey = msg.payload.apiKey;
           // 隐藏 API Key 输入框
-          if (apiKeyWrapper) {
-            apiKeyWrapper.style.display = 'none';
+          const wrapper = document.querySelector('.input-wrapper');
+          if (wrapper) {
+            wrapper.style.display = 'none';
           }
           updateStatus('success', '已加载本地配置');
         }
@@ -663,22 +678,26 @@ export const UI_HTML = `
     };
     
     async function callOpenAI(systemPrompt) {
-      // 优先使用配置的 API Key，否则使用输入框中的值
-      const apiKey = configuredApiKey || apiKeyInput.value.trim();
+      // 优先使用 appConfig 配置，否则使用输入框中的值
+      const apiKey = appConfig.apiKey || apiKeyInput.value.trim();
       if (!apiKey) {
-        throw new Error('请输入 API Key');
+        throw new Error('请配置 API Key');
       }
       
-      console.log('[UI] Calling AI API...');
+      if (!appConfig.apiBaseUrl) {
+        throw new Error('API 地址未配置');
+      }
       
-      const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      console.log('[UI] Calling AI API...', { url: appConfig.apiBaseUrl, model: appConfig.model });
+      
+      const response = await fetch(appConfig.apiBaseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: 'glm-4',
+          model: appConfig.model,
           messages: [{ role: 'user', content: systemPrompt }],
           temperature: 0.3,
           max_tokens: 4000
@@ -692,7 +711,11 @@ export const UI_HTML = `
       }
       
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      console.log('AI Raw Response:', data);
+      
+      // glm-4.5-flash 模型可能在 reasoning_content 中返回内容
+      const message = data.choices?.[0]?.message;
+      const content = message?.content || message?.reasoning_content;
       
       if (!content) {
         throw new Error('AI 返回空内容');

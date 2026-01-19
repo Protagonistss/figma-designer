@@ -1,8 +1,9 @@
 export const API_SERVICE_SCRIPT = `
+    // 配置从主线程通过 postMessage 传递，不在此硬编码
     let appConfig = {
       apiKey: '',
-      apiBaseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      model: 'glm-4'
+      apiBaseUrl: '',
+      model: ''
     };
 
     async function callOpenAI(systemPrompt, metadata) {

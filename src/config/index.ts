@@ -15,7 +15,7 @@ export class ConfigManager {
       // @ts-ignore
       apiBaseUrl: process.env.API_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
       // @ts-ignore
-      model: process.env.MODEL || 'glm-4'
+      model: process.env.MODEL || 'glm-4.5-flash'
     };
   }
 
