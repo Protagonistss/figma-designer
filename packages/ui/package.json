@@ -1,6 +1,9 @@
 {
   "name": "@figma-designer/ui",
   "version": "1.0.0",
+  "exports": {
+    "./html": "./dist/index.html"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"

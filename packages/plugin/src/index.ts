@@ -1,5 +1,5 @@
 import { Processor } from './processor';
-import UI_HTML from '../../ui/dist/index.html';
+import UI_HTML from '@figma-designer/ui/html';
 import { ConfigManager } from './config';
 import { buildPageAnalysisPrompt, buildHybridAnalysisPrompt } from '@figma-designer/ai';
 import { NodeMetadata, AnalysisMode, AnalysisConfig, DEFAULT_ANALYSIS_CONFIG, RawNodeTree } from '@figma-designer/shared';
