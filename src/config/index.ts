@@ -20,8 +20,8 @@ export class ConfigManager {
       availableModels: [
         { value: 'glm-4.7', label: 'GLM-4.7 (文本)' },
         { value: 'GLM-4.6V', label: 'GLM-4.6V (视觉)' },
-        { value: 'GLM-4.6V-Flash', label: 'GLM-4.6V-Flash (视觉free)' },
-        { value: 'glm-4.5-flash', label: 'GLM-4.5-Flash (快速free)' },
+        { value: 'glm-4.5-flash', label: 'GLM-4.5-Flash (文本free)' },
+        { value: 'GLM-4.6V-Flash', label: 'GLM-4.6V-Flash (视觉free)' }
       ]
     };
   }
