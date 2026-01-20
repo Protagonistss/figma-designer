@@ -1,7 +1,7 @@
 import { Processor } from './processor';
 import UI_HTML from '@figma-designer/ui/html';
 import { ConfigManager } from './config';
-import { buildPageAnalysisPrompt, buildHybridAnalysisPrompt, buildVisualOnlyPrompt } from '@figma-designer/ai';
+import { buildPageAnalysisPrompt, buildVisualOnlyPrompt } from '@figma-designer/ai';
 import { NodeMetadata, AnalysisMode, AnalysisConfig, DEFAULT_ANALYSIS_CONFIG, RawNodeTree } from '@figma-designer/shared';
 
 /**
@@ -177,10 +177,18 @@ async function main() {
           prompt = buildVisualOnlyPrompt();
         } else if (mode === 'hybrid') {
           // 混合模式：同时发送 metadata 和截图
-          prompt = buildHybridAnalysisPrompt(JSON.stringify(lastMetadata, null, 2), hasScreenshot);
+          prompt = buildPageAnalysisPrompt({
+            pageType: 'auto',
+            hasScreenshot,
+            metadataJson: JSON.stringify(lastMetadata, null, 2)
+          });
         } else {
           // 纯结构模式：只发送 metadata
-          prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
+          prompt = buildPageAnalysisPrompt({
+            pageType: 'table',
+            hasScreenshot: false,
+            metadataJson: JSON.stringify(lastMetadata, null, 2)
+          });
         }
         
         const inferenceResult = await requestAI(prompt, lastMetadata, hasScreenshot ? lastScreenshot! : undefined);

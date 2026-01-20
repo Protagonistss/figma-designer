@@ -15,7 +15,3 @@ export * from './builders';
 export * from './system';
 export * from './user';
 export * from './segments';
-
-// 向后兼容：保留旧的导出名称
-export { buildStructureAnalysisPrompt as buildPageAnalysisPrompt } from './builders';
-export { buildHybridAnalysisPrompt, buildVisualOnlyPrompt } from './builders';

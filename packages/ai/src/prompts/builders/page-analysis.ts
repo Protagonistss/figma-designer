@@ -38,30 +38,6 @@ export function buildPageAnalysisPrompt(options: BuildPromptOptions): string {
 }
 
 /**
- * 向后兼容：混合分析 Prompt（有截图）
- * @deprecated 使用 buildPageAnalysisPrompt 替代
- */
-export function buildHybridAnalysisPrompt(metadataJson: string, hasScreenshot: boolean): string {
-  return buildPageAnalysisPrompt({
-    pageType: 'auto',
-    hasScreenshot,
-    metadataJson
-  });
-}
-
-/**
- * 向后兼容：纯结构分析 Prompt（无截图）
- * @deprecated 使用 buildPageAnalysisPrompt 替代
- */
-export function buildStructureAnalysisPrompt(metadataJson: string): string {
-  return buildPageAnalysisPrompt({
-    pageType: 'table',
-    hasScreenshot: false,
-    metadataJson
-  });
-}
-
-/**
  * 纯视觉分析 Prompt（仅截图，不含结构数据）
  */
 export function buildVisualOnlyPrompt(): string {
