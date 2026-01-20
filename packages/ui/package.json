@@ -1,8 +1,12 @@
 {
   "name": "@figma-designer/ui",
   "version": "1.0.0",
+  "type": "module",
   "exports": {
-    "./html": "./dist/index.html"
+    "./html": {
+      "types": "./html.d.ts",
+      "default": "./dist/index.html"
+    }
   },
   "scripts": {
     "build": "vite build",
@@ -26,3 +30,4 @@
     "vite-plugin-singlefile": "^2.3.0"
   }
 }
+
