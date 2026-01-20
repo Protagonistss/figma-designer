@@ -116,7 +116,7 @@ async function main() {
 
     if (msg.type === 'start-extract') {
       try {
-        const mode: AnalysisMode = msg.mode || 'structure-only';
+        const mode: AnalysisMode = msg.payload?.mode || msg.mode || 'structure-only';
         console.log('[Main] Start extract with mode:', mode);
         figma.notify("开始提取元数据...");
 
@@ -164,8 +164,8 @@ async function main() {
       }
 
       try {
-        const mode: AnalysisMode = msg.mode || 'structure-only';
-        const hasScreenshot = msg.hasScreenshot && !!lastScreenshot;
+        const mode: AnalysisMode = msg.payload?.mode || msg.mode || 'structure-only';
+        const hasScreenshot = (msg.payload?.hasScreenshot || msg.hasScreenshot) && !!lastScreenshot;
         
         figma.notify('开始推断...');
         console.log('[Main] Start inference with mode:', mode, 'hasScreenshot:', hasScreenshot);

@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@ithinku/tsconfig':
+        specifier: 0.0.7
+        version: 0.0.7
       rimraf:
         specifier: ^5.0.0
         version: 5.0.10
@@ -340,6 +343,9 @@ packages:
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
+
+  '@ithinku/tsconfig@0.0.7':
+    resolution: {integrity: sha512-25tMTsTeOInHoLzJP37rAwhGxI4MH3yUmbzYiW7dLxf3KSQCL7MJX/G0oJYu9Pdpz/ZetHCEBNZ9KdNfraOB+w==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1202,6 +1208,8 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
+
+  '@ithinku/tsconfig@0.0.7': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

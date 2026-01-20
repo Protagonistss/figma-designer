@@ -274,7 +274,7 @@ input:focus {
   flex: 1;
   background: var(--code-bg);
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   height: 100%;
 }

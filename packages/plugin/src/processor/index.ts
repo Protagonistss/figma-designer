@@ -24,6 +24,7 @@ export class Processor {
     let screenshot: string | undefined;
     
     // 根据模式决定是否捕获截图
+    console.log('[Processor] Mode:', config.mode, 'Should capture?', config.mode === 'visual-only' || config.mode === 'hybrid');
     if (config.mode === 'visual-only' || config.mode === 'hybrid') {
       try {
         console.log('[Processor] Capturing screenshot...');
@@ -31,13 +32,16 @@ export class Processor {
           ...config.screenshot,
           enabled: true  // 强制启用
         });
-        console.log('[Processor] Screenshot captured');
+        console.log('[Processor] Screenshot captured, length:', screenshot?.length || 0);
       } catch (err) {
         console.error('[Processor] Screenshot capture failed:', err);
-        // 截图失败不影响主流程
+        // 截图失败不影响主流程，但在控制台打印详细错误
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('[Processor] Screenshot error details:', errorMessage);
       }
     }
     
+    console.log('[Processor] Returning result with screenshot:', !!screenshot);
     return { metadata, screenshot };
   }
   
