@@ -11,22 +11,30 @@ import type { BuildPromptOptions } from '../types';
  * 构建完整的页面分析 Prompt
  */
 export function buildPageAnalysisPrompt(options: BuildPromptOptions): string {
-  const { pageType, hasScreenshot, metadataJson } = options;
+  const { pageType, hasScreenshot, metadataJson, visualOnly } = options;
 
   // 渲染 System Prompt
-  const systemPrompt = render(SYSTEM_BASE, { hasScreenshot });
+  const systemPrompt = render(SYSTEM_BASE, { hasScreenshot, visualOnly });
 
   // 获取对应页面类型的 User Prompt
   const userPrompt = getUserPrompt(pageType);
 
   // 组合最终 Prompt
-  return concat(
+  const parts = [
     systemPrompt,
     ROLES_SEGMENT,
     userPrompt,
-    OUTPUT_FORMAT_SEGMENT,
-    `## 待分析的页面元数据\n\n\`\`\`json\n${metadataJson}\n\`\`\``
-  );
+    OUTPUT_FORMAT_SEGMENT
+  ];
+
+  // 仅在非 visualOnly 模式下添加元数据
+  if (!visualOnly && metadataJson) {
+    parts.push(`## 待分析的页面元数据\n\n\`\`\`json\n${metadataJson}\n\`\`\``);
+  } else if (visualOnly) {
+    parts.push('## 分析说明\n\n请仅根据提供的截图进行视觉分析，无需结构化元数据。');
+  }
+
+  return concat(...parts);
 }
 
 /**
@@ -50,5 +58,16 @@ export function buildStructureAnalysisPrompt(metadataJson: string): string {
     pageType: 'table',
     hasScreenshot: false,
     metadataJson
+  });
+}
+
+/**
+ * 纯视觉分析 Prompt（仅截图，不含结构数据）
+ */
+export function buildVisualOnlyPrompt(): string {
+  return buildPageAnalysisPrompt({
+    pageType: 'auto',
+    hasScreenshot: true,
+    visualOnly: true
   });
 }

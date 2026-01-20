@@ -143,5 +143,8 @@ export type AnalysisResult = TablePageResult | FormPageResult | DashboardPageRes
 export interface BuildPromptOptions {
   pageType: PageType;
   hasScreenshot: boolean;
-  metadataJson: string;
+  /** 结构化元数据 JSON，visual-only 模式下可省略 */
+  metadataJson?: string;
+  /** 是否为纯视觉模式（不包含结构数据） */
+  visualOnly?: boolean;
 }

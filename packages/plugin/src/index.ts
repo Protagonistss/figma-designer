@@ -1,7 +1,7 @@
 import { Processor } from './processor';
 import UI_HTML from '@figma-designer/ui/html';
 import { ConfigManager } from './config';
-import { buildPageAnalysisPrompt, buildHybridAnalysisPrompt } from '@figma-designer/ai';
+import { buildPageAnalysisPrompt, buildHybridAnalysisPrompt, buildVisualOnlyPrompt } from '@figma-designer/ai';
 import { NodeMetadata, AnalysisMode, AnalysisConfig, DEFAULT_ANALYSIS_CONFIG, RawNodeTree } from '@figma-designer/shared';
 
 /**
@@ -172,9 +172,14 @@ async function main() {
         
         // 根据模式选择 Prompt
         let prompt: string;
-        if (mode === 'hybrid' || mode === 'visual-only') {
+        if (mode === 'visual-only') {
+          // 纯视觉模式：只发送截图，不发送 metadata
+          prompt = buildVisualOnlyPrompt();
+        } else if (mode === 'hybrid') {
+          // 混合模式：同时发送 metadata 和截图
           prompt = buildHybridAnalysisPrompt(JSON.stringify(lastMetadata, null, 2), hasScreenshot);
         } else {
+          // 纯结构模式：只发送 metadata
           prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
         }
         
