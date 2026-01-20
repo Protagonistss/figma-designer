@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import classNames from 'classnames';
 import { NodeMetadata, RawNodeTree } from '@figma-designer/shared';
-import { JsonViewer, JsonNode } from './JsonViewer';
+import { JsonViewer } from './JsonViewer';
 
 interface ResultPanelProps {
   metadata: NodeMetadata | null;
@@ -11,11 +11,34 @@ interface ResultPanelProps {
   mode: 'structure-only' | 'hybrid' | 'visual-only';
 }
 
-const DownloadIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6 8.5L2.5 5H4.5V1.5H7.5V5H9.5L6 8.5Z" fill="currentColor"/>
-    <path d="M2.5 9.5H9.5V10.5H2.5V9.5Z" fill="currentColor"/>
+const CopyIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
   </svg>
+);
+
+const ZoomInIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <line x1="11" y1="8" x2="11" y2="14"></line>
+        <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>
+);
+
+const ZoomOutIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>
+);
+
+const FitIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>
 );
 
 const countNodes = (node: any): number => {
@@ -30,118 +53,88 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
   metadata,
   nodeTree,
   inferenceResult,
-  screenshot,
-  mode
+  screenshot
 }) => {
   const [activeTab, setActiveTab] = useState<'metadata' | 'nodeTree' | 'inference'>('metadata');
-
-  const downloadJson = () => {
-    if (!metadata) return;
-    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'metadata.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const [zoom, setZoom] = useState(100);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      console.log('Copied!');
-    }).catch(err => {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
+      // toast or notification
     });
   };
 
-  return (
-    <>
-      <div className="main-content">
-        <div className="left-panel">
-          {metadata && (
-            <div className="stats">
-              <div className="stat-item">
-                <span className="stat-value">{countNodes(metadata)}</span>
-                <span className="stat-label">节点数</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">{inferenceResult?.table?.columns?.length || 0}</span>
-                <span className="stat-label">表格列</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">{inferenceResult?.search?.fields?.length || 0}</span>
-                <span className="stat-label">搜索项</span>
-              </div>
-            </div>
-          )}
+  const getActiveData = () => {
+      if (activeTab === 'metadata') return metadata;
+      if (activeTab === 'nodeTree') return nodeTree;
+      if (activeTab === 'inference') return inferenceResult;
+      return null;
+  };
 
-          {screenshot && (
-            <div className="screenshot-preview">
-              <img src={screenshot} alt="Screenshot" />
-              <div className="screenshot-info">
-                <span>{Math.round((screenshot.length * 3) / 4 / 1024)} KB</span>
-                <span>{mode === 'hybrid' ? '混合模式' : '仅截图'}</span>
+  const activeData = getActiveData();
+  const nodeCount = metadata ? countNodes(metadata) : 0;
+
+  return (
+    <div className="main-content">
+      {/* Left Panel: Preview - Only show if screenshot exists */}
+      {screenshot && (
+        <div className="panel-left">
+          <div className="panel-header">预览</div>
+          <div className="preview-area">
+              <img 
+                  src={screenshot} 
+                  className="preview-image" 
+                  style={{ transform: `scale(${zoom / 100})` }}
+                  alt="Preview" 
+              />
+              <div className="zoom-controls">
+                  <button className="zoom-btn" onClick={() => setZoom(Math.max(10, zoom - 10))}><ZoomOutIcon /></button>
+                  <button className="zoom-btn" onClick={() => setZoom(100)}><FitIcon /></button>
+                  <button className="zoom-btn" onClick={() => setZoom(Math.min(500, zoom + 10))}><ZoomInIcon /></button>
               </div>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Right Panel: Code */}
+      <div className="panel-right">
+        <div className="right-header">
+           <button 
+              className={classNames('tab-btn', { active: activeTab === 'metadata' })}
+              onClick={() => setActiveTab('metadata')}
+           >
+              Metadata
+           </button>
+           <button 
+              className={classNames('tab-btn', { active: activeTab === 'nodeTree' })}
+              onClick={() => setActiveTab('nodeTree')}
+           >
+              Node Tree
+           </button>
+        </div>
+        
+        <div className="right-sub-header">
+           <span>{metadata ? `${nodeCount} 节点, ${0} 表格` : 'Ready'}</span>
+           <button className="json-copy-btn" onClick={() => activeData && copyToClipboard(JSON.stringify(activeData, null, 2))}>
+              <CopyIcon /> JSON
+           </button>
         </div>
 
-        <div className="right-panel">
-          <div className="tabs-header">
-            <div className="tab-group">
-              <button
-                className={classNames('tab', { active: activeTab === 'metadata' })}
-                onClick={() => setActiveTab('metadata')}
-              >Metadata</button>
-              <button
-                className={classNames('tab', { active: activeTab === 'nodeTree' })}
-                onClick={() => setActiveTab('nodeTree')}
-              >Node Tree</button>
-              {inferenceResult && (
-                <button
-                  className={classNames('tab', { active: activeTab === 'inference' })}
-                  onClick={() => setActiveTab('inference')}
-                >Inference</button>
-              )}
+        <div className="code-content">
+            <div className="tab-content-wrapper">
+                {activeTab === 'metadata' && (
+                     <JsonViewer data={metadata} />
+                )}
+                {activeTab === 'nodeTree' && (
+                     <JsonViewer data={nodeTree} />
+                )}
+                 {activeTab === 'inference' && (
+                     <JsonViewer data={inferenceResult} />
+                )}
             </div>
-            <button className="btn-download-mini" onClick={downloadJson} title="下载元数据 JSON">
-              <span>JSON</span>
-              <DownloadIcon />
-            </button>
-          </div>
-
-          <div className={classNames('tab-content', { active: activeTab === 'metadata' })}>
-            <JsonViewer
-              data={metadata}
-              onCopy={metadata ? () => copyToClipboard(JSON.stringify(metadata, null, 2)) : undefined}
-            />
-          </div>
-
-          <div className={classNames('tab-content', { active: activeTab === 'nodeTree' })}>
-            <JsonViewer
-              data={nodeTree}
-              onCopy={nodeTree ? () => copyToClipboard(JSON.stringify(nodeTree, null, 2)) : undefined}
-            />
-          </div>
-
-          <div className={classNames('tab-content', { active: activeTab === 'inference' })}>
-            {inferenceResult && (
-              <button className="btn-copy" onClick={() => copyToClipboard(JSON.stringify(inferenceResult, null, 2))}>复制</button>
-            )}
-            <textarea
-              className="code-textarea"
-              readOnly
-              value={inferenceResult ? JSON.stringify(inferenceResult, null, 2) : ''}
-            />
-          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

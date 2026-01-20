@@ -7,7 +7,7 @@ import { useConfig, useFigmaMessage, useAIRequest } from './hooks';
 import { figmaService } from './services';
 
 // --- Components ---
-import { ConfigPanel, StatusBar, ResultPanel } from './components';
+import { Header, StatusBar, ResultPanel } from './components';
 
 const DEFAULT_CONFIG: AppConfig = {
   apiKey: '',
@@ -18,7 +18,7 @@ const DEFAULT_CONFIG: AppConfig = {
 
 export default function App() {
   // --- State Management ---
-  const { config, models, updateConfig, setModel, setApiKey } = useConfig(DEFAULT_CONFIG);
+  const { config, models, updateConfig, setModel } = useConfig(DEFAULT_CONFIG);
   const [status, setStatus] = React.useState<Status>({ type: 'idle', text: '准备就绪' });
   const [mode, setMode] = React.useState<'structure-only' | 'hybrid' | 'visual-only'>('structure-only');
   const [metadata, setMetadata] = React.useState<NodeMetadata | null>(null);
@@ -117,23 +117,19 @@ export default function App() {
   // --- Render ---
 
   return (
-    <>
-      <ConfigPanel
+    <div className="app-container">
+      <Header
         config={config}
         models={models}
         mode={mode}
         isExtracting={isExtracting}
         isInferring={isInferring}
         hasMetadata={!!metadata}
-        hasInferenceResult={!!inferenceResult}
-        onApiKeyChange={setApiKey}
         onModelChange={setModel}
         onModeChange={handleModeChange}
         onExtract={handleExtract}
         onInference={handleInference}
       />
-
-      <StatusBar status={status} model={config.model} />
 
       <ResultPanel
         metadata={metadata}
@@ -142,6 +138,8 @@ export default function App() {
         screenshot={screenshot}
         mode={mode}
       />
-    </>
+
+      <StatusBar status={status} model={config.model} />
+    </div>
   );
 }
