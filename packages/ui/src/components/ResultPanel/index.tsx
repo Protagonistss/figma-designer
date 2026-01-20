@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import classNames from 'classnames';
 import { NodeMetadata, RawNodeTree } from '@figma-designer/shared';
-import { JsonViewer } from './JsonViewer';
+import { JsonViewer } from '../JsonViewer';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import styles from './style.module.css';
 
 interface ResultPanelProps {
   metadata: NodeMetadata | null;
@@ -94,12 +95,12 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
   const nodeCount = metadata ? countNodes(metadata) : 0;
 
   return (
-    <div className="main-content">
+    <div className={styles.mainContent}>
       {/* Left Panel: Preview - Only show if screenshot exists */}
       {screenshot && (
-        <div className="panel-left">
-          <div className="panel-header">预览</div>
-          <div className="preview-area" style={{ padding: 0 }}>
+        <div className={styles.panelLeft}>
+          <div className={styles.panelHeader}>预览</div>
+          <div className={styles.previewArea} style={{ padding: 0 }}>
              <TransformWrapper
                 initialScale={1}
                 minScale={0.1}
@@ -109,10 +110,10 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
              >
                {({ zoomIn, zoomOut, resetTransform }) => (
                  <React.Fragment>
-                     <div className="zoom-controls" style={{ zIndex: 10 }}>
-                        <button className="zoom-btn" onClick={() => zoomOut()}><ZoomOutIcon /></button>
-                        <button className="zoom-btn" onClick={() => resetTransform()}><FitIcon /></button>
-                        <button className="zoom-btn" onClick={() => zoomIn()}><ZoomInIcon /></button>
+                     <div className={styles.zoomControls} style={{ zIndex: 10 }}>
+                        <button className={styles.zoomBtn} onClick={() => zoomOut()}><ZoomOutIcon /></button>
+                        <button className={styles.zoomBtn} onClick={() => resetTransform()}><FitIcon /></button>
+                        <button className={styles.zoomBtn} onClick={() => zoomIn()}><ZoomInIcon /></button>
                      </div>
                      <TransformComponent
                         wrapperStyle={{ width: '100%', height: '100%' }}
@@ -120,7 +121,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
                      >
                         <img 
                             src={screenshot} 
-                            className="preview-image" 
+                            className={styles.previewImage} 
                             alt="Preview" 
                             style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'auto' }}
                         />
@@ -133,31 +134,31 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
       )}
 
       {/* Right Panel: Code */}
-      <div className="panel-right">
-        <div className="right-header">
+      <div className={styles.panelRight}>
+        <div className={styles.rightHeader}>
            <button 
-              className={classNames('tab-btn', { active: activeTab === 'metadata' })}
+              className={classNames(styles.tabBtn, { [styles.active]: activeTab === 'metadata' })}
               onClick={() => setActiveTab('metadata')}
            >
               Metadata
            </button>
            <button 
-              className={classNames('tab-btn', { active: activeTab === 'nodeTree' })}
+              className={classNames(styles.tabBtn, { [styles.active]: activeTab === 'nodeTree' })}
               onClick={() => setActiveTab('nodeTree')}
            >
               Node Tree
            </button>
            <button 
-              className={classNames('tab-btn', { active: activeTab === 'inference' })}
+              className={classNames(styles.tabBtn, { [styles.active]: activeTab === 'inference' })}
               onClick={() => setActiveTab('inference')}
            >
               Inference
            </button>
         </div>
         
-        <div className="right-sub-header">
+        <div className={styles.rightSubHeader}>
            <span>{metadata ? `${nodeCount} 节点, ${0} 表格` : 'Ready'}</span>
-           <button className="json-copy-btn" onClick={() => activeData && copyToClipboard(JSON.stringify(activeData, null, 2))}>
+           <button className={styles.jsonCopyBtn} onClick={() => activeData && copyToClipboard(JSON.stringify(activeData, null, 2))}>
               {copyStatus === 'copied' ? (
                 <>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -171,8 +172,8 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
            </button>
         </div>
 
-        <div className="code-content">
-            <div className="tab-content-wrapper">
+        <div className={styles.codeContent}>
+            <div className={styles.tabContentWrapper}>
                 {activeTab === 'metadata' && (
                      <JsonViewer data={metadata} />
                 )}

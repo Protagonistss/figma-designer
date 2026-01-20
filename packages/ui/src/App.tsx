@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { AppConfig, Status, NodeMetadata, RawNodeTree } from '@figma-designer/shared';
 import * as SharedUtils from '@figma-designer/shared';
+import styles from './App.module.css';
 
 // --- Hooks & Services ---
 import { useConfig, useFigmaMessage, useAIRequest } from './hooks';
@@ -117,7 +118,7 @@ export default function App() {
   // --- Render ---
 
   return (
-    <div className="app-container">
+    <div className={styles.container}>
       <Header
         config={config}
         models={models}

@@ -1,0 +1,16 @@
+:root {
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --success: #10b981;
+  --error: #ef4444;
+  --code-bg: #1e1e1e;
+  --code-header-bg: #252526;
+  --code-text: #d4d4d4;
+  --blue-bar-bg: #3b82f6;
+  --blue-bar-text: #ffffff;
+}

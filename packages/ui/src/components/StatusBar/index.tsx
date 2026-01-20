@@ -1,5 +1,6 @@
 import React from 'react';
 import { Status } from '@figma-designer/shared';
+import styles from './style.module.css';
 
 interface StatusBarProps {
   status: Status;
@@ -8,7 +9,7 @@ interface StatusBarProps {
 
 export const StatusBar: React.FC<StatusBarProps> = ({ status }) => {
   return (
-    <div className="status-footer">
+    <div className={styles.footer}>
       {status.text}
     </div>
   );

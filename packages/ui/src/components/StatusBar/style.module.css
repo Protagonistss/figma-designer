@@ -1,0 +1,11 @@
+.footer {
+  height: 32px;
+  background: var(--blue-bar-bg);
+  color: var(--blue-bar-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
