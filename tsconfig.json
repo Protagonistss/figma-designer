@@ -1,20 +1,12 @@
 {
+  "extends": "@ithinku/tsconfig/bundler",
   "compilerOptions": {
-    "target": "es2017",
-    "lib": ["es2017", "dom"],
-    "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node",
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@figma"
-    ],
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "sourceMap": true,
-    "inlineSources": true,
-    "removeComments": false,
-    "skipLibCheck": true
-  }
+    "target": "ES2017",
+    "lib": ["ES2017"],
+    "types": ["@figma/plugin-typings"],
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
