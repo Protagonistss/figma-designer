@@ -147,6 +147,12 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
            >
               Node Tree
            </button>
+           <button 
+              className={classNames('tab-btn', { active: activeTab === 'inference' })}
+              onClick={() => setActiveTab('inference')}
+           >
+              Inference
+           </button>
         </div>
         
         <div className="right-sub-header">
