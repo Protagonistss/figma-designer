@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import classNames from 'classnames';
 import { NodeMetadata, RawNodeTree } from '@figma-designer/shared';
 import { JsonViewer } from './JsonViewer';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 interface ResultPanelProps {
   metadata: NodeMetadata | null;
@@ -56,7 +57,6 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
   screenshot
 }) => {
   const [activeTab, setActiveTab] = useState<'metadata' | 'nodeTree' | 'inference'>('metadata');
-  const [zoom, setZoom] = useState(100);
 
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 
@@ -99,18 +99,35 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
       {screenshot && (
         <div className="panel-left">
           <div className="panel-header">预览</div>
-          <div className="preview-area">
-              <img 
-                  src={screenshot} 
-                  className="preview-image" 
-                  style={{ transform: `scale(${zoom / 100})` }}
-                  alt="Preview" 
-              />
-              <div className="zoom-controls">
-                  <button className="zoom-btn" onClick={() => setZoom(Math.max(10, zoom - 10))}><ZoomOutIcon /></button>
-                  <button className="zoom-btn" onClick={() => setZoom(100)}><FitIcon /></button>
-                  <button className="zoom-btn" onClick={() => setZoom(Math.min(500, zoom + 10))}><ZoomInIcon /></button>
-              </div>
+          <div className="preview-area" style={{ padding: 0 }}>
+             <TransformWrapper
+                initialScale={1}
+                minScale={0.1}
+                maxScale={8}
+                centerOnInit
+                wheel={{ step: 0.1 }}
+             >
+               {({ zoomIn, zoomOut, resetTransform }) => (
+                 <React.Fragment>
+                     <div className="zoom-controls" style={{ zIndex: 10 }}>
+                        <button className="zoom-btn" onClick={() => zoomOut()}><ZoomOutIcon /></button>
+                        <button className="zoom-btn" onClick={() => resetTransform()}><FitIcon /></button>
+                        <button className="zoom-btn" onClick={() => zoomIn()}><ZoomInIcon /></button>
+                     </div>
+                     <TransformComponent
+                        wrapperStyle={{ width: '100%', height: '100%' }}
+                        contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                     >
+                        <img 
+                            src={screenshot} 
+                            className="preview-image" 
+                            alt="Preview" 
+                            style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'auto' }}
+                        />
+                     </TransformComponent>
+                 </React.Fragment>
+               )}
+             </TransformWrapper>
           </div>
         </div>
       )}
