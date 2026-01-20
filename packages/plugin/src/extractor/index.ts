@@ -1,52 +1,64 @@
 import { NodeMetadata } from '@figma-designer/shared';
 
 export class MetadataExtractor {
-  private maxDepth: number;
-  
-  constructor(maxDepth: number = 10) {
-    this.maxDepth = maxDepth;
-  }
-  
-  // 提取节点树的元数据
+  constructor(private readonly maxDepth: number = 10) {}
+
+  /** 提取节点树的元数据 */
   extractTree(node: SceneNode): NodeMetadata | null {
     return this.extractNode(node, 0);
   }
-  
+
   private extractNode(node: SceneNode, depth: number): NodeMetadata | null {
-    // 文本节点：必须有内容才保留
-    if (node.type === 'TEXT') {
-      const characters = (node as TextNode).characters;
-      if (characters.trim().length > 0) {
-        return {
-          type: node.type,
-          name: node.name,
-          x: Math.round(node.x),
-          y: Math.round(node.y),
-          characters
-        };
-      }
-      return null; // 空文本节点，过滤掉
+    if (this.isTextNode(node)) {
+      return this.extractTextNode(node);
     }
     
-    // 容器节点：只有当子节点中存在有效内容时才保留
-    if ('children' in node && depth < this.maxDepth) {
-      const visibleChildren = node.children.filter(c => c.visible);
-      const validChildren = visibleChildren
-        .map(c => this.extractNode(c, depth + 1))
-        .filter((c): c is NodeMetadata => c !== null);
-      
-      if (validChildren.length > 0) {
-        return {
-          type: node.type,
-          name: node.name,
-          x: Math.round(node.x),
-          y: Math.round(node.y),
-          children: validChildren
-        };
-      }
+    if (this.isContainerNode(node) && depth < this.maxDepth) {
+      return this.extractContainerNode(node, depth);
     }
     
-    // 其他情况（叶子节点无文本、空容器）：过滤掉
     return null;
+  }
+
+  private extractTextNode(node: TextNode): NodeMetadata | null {
+    const text = node.characters.trim();
+    if (!text) return null;
+
+    return {
+      ...this.baseMetadata(node),
+      characters: node.characters,
+    };
+  }
+
+  private extractContainerNode(node: SceneNode & ChildrenMixin, depth: number): NodeMetadata | null {
+    const children = node.children
+      .filter(child => child.visible)
+      .map(child => this.extractNode(child, depth + 1))
+      .filter((child): child is NodeMetadata => child !== null);
+
+    if (!children.length) return null;
+
+    return {
+      ...this.baseMetadata(node),
+      children,
+    };
+  }
+
+  private baseMetadata(node: SceneNode): Pick<NodeMetadata, 'type' | 'name' | 'x' | 'y'> {
+    return {
+      type: node.type,
+      name: node.name,
+      x: Math.round(node.x),
+      y: Math.round(node.y),
+    };
+  }
+
+  // Type guards
+  private isTextNode(node: SceneNode): node is TextNode {
+    return node.type === 'TEXT';
+  }
+
+  private isContainerNode(node: SceneNode): node is SceneNode & ChildrenMixin {
+    return 'children' in node;
   }
 }
