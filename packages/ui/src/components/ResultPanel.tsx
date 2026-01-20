@@ -58,10 +58,29 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'metadata' | 'nodeTree' | 'inference'>('metadata');
   const [zoom, setZoom] = useState(100);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      // toast or notification
-    });
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to copy via navigator.clipboard', err);
+      // Fallback
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopyStatus('copied');
+        setTimeout(() => setCopyStatus('idle'), 2000);
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   const getActiveData = () => {
@@ -116,7 +135,16 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({
         <div className="right-sub-header">
            <span>{metadata ? `${nodeCount} 节点, ${0} 表格` : 'Ready'}</span>
            <button className="json-copy-btn" onClick={() => activeData && copyToClipboard(JSON.stringify(activeData, null, 2))}>
-              <CopyIcon /> JSON
+              {copyStatus === 'copied' ? (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <CopyIcon /> JSON
+                </>
+              )}
            </button>
         </div>
 

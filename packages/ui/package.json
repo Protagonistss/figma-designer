@@ -9,18 +9,19 @@
     "dev": "vite build --watch"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "classnames": "^2.5.1",
+    "@figma-designer/ai": "workspace:*",
     "@figma-designer/shared": "workspace:*",
-    "@figma-designer/ai": "workspace:*"
+    "@uiw/react-json-view": "2.0.0-alpha.40",
+    "classnames": "^2.5.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.3.2",
     "vite": "^7.3.1",
-    "vite-plugin-singlefile": "^2.3.0",
-    "typescript": "^5.3.2"
+    "vite-plugin-singlefile": "^2.3.0"
   }
 }

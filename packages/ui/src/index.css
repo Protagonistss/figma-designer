@@ -197,8 +197,8 @@ body {
   flex: 1;
   display: flex;
   overflow: hidden;
-  padding: 16px;
-  gap: 16px;
+  padding: 8px; /* Reduced from 16px */
+  gap: 8px; /* Reduced from 16px */
 }
 
 .panel-left {
