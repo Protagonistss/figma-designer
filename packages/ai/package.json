@@ -6,10 +6,9 @@
   "scripts": {
     "build": "tsup"
   },
-  "dependencies": {
-    "@figma-designer/shared": "workspace:*"
-  },
+
   "devDependencies": {
+    "@figma-designer/shared": "workspace:*",
     "typescript": "^5.3.2",
     "tsup": "^8.0.0"
   }

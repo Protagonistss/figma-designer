@@ -1,4 +1,4 @@
-import { AppError, ErrorType, createAPIError, createConfigError, createFigmaError, createNetworkError } from '../types/errors';
+import { AppError, ErrorType, createAPIError } from '../types/errors';
 
 /**
  * 错误处理工具函数
@@ -114,7 +114,7 @@ export function formatErrorLog(error: AppError, context?: string): string {
 /**
  * 处理 API 错误响应
  */
-export function handleAPIError(response: Response, errorText?: string): AppError {
+export function handleAPIError(response: Response): AppError {
   if (response.status === 401) {
     return createAPIError('API Key 无效或已过期', '401');
   }

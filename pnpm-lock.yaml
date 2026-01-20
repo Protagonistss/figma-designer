@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@figma/plugin-typings':
+        specifier: '*'
+        version: 1.121.0
       '@ithinku/tsconfig':
         specifier: 0.0.7
         version: 0.0.7
@@ -19,11 +22,10 @@ importers:
         version: 5.9.3
 
   packages/ai:
-    dependencies:
+    devDependencies:
       '@figma-designer/shared':
         specifier: workspace:*
         version: link:../shared
-    devDependencies:
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)
@@ -32,7 +34,7 @@ importers:
         version: 5.9.3
 
   packages/plugin:
-    dependencies:
+    devDependencies:
       '@figma-designer/ai':
         specifier: workspace:*
         version: link:../ai
@@ -42,7 +44,6 @@ importers:
       '@figma-designer/ui':
         specifier: workspace:*
         version: link:../ui
-    devDependencies:
       '@figma/plugin-typings':
         specifier: '*'
         version: 1.121.0
@@ -61,12 +62,6 @@ importers:
 
   packages/ui:
     dependencies:
-      '@figma-designer/ai':
-        specifier: workspace:*
-        version: link:../ai
-      '@figma-designer/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@uiw/react-json-view':
         specifier: 2.0.0-alpha.40
         version: 2.0.0-alpha.40(@babel/runtime@7.28.6)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -83,6 +78,12 @@ importers:
         specifier: 3.7.0
         version: 3.7.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
+      '@figma-designer/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@figma-designer/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.8

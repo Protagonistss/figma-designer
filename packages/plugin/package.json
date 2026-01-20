@@ -5,12 +5,11 @@
   "scripts": {
     "build": "tsup"
   },
-  "dependencies": {
+
+  "devDependencies": {
     "@figma-designer/shared": "workspace:*",
     "@figma-designer/ai": "workspace:*",
-    "@figma-designer/ui": "workspace:*"
-  },
-  "devDependencies": {
+    "@figma-designer/ui": "workspace:*",
     "@figma/plugin-typings": "*",
     "tsup": "^8.5.1",
     "typescript": "^5.3.2"
