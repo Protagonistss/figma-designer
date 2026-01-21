@@ -36,10 +36,16 @@ export class AIService {
   async callAI(prompt: string, screenshot?: string): Promise<any> {
     const { apiKey, apiBaseUrl, model } = this.config;
 
-    if (!apiKey) {
+    console.log('[AIService] callAI with config:', {
+      apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : '(empty)',
+      apiBaseUrl,
+      model
+    });
+
+    if (!apiKey || apiKey.trim() === '') {
       throw new Error('请配置 API Key');
     }
-    if (!apiBaseUrl) {
+    if (!apiBaseUrl || apiBaseUrl.trim() === '') {
       throw new Error('API 地址未配置');
     }
 
@@ -95,22 +101,33 @@ export class AIService {
   }
 
   private parseJSONResponse(content: string): any {
+    // 移除 markdown 代码块标记
+    let cleanedContent = content.trim();
+    
+    // 移除 ```json ... ``` 或 ``` ... ``` 包裹
+    const codeBlockMatch = cleanedContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      cleanedContent = codeBlockMatch[1].trim();
+    }
+    
     // Try direct parse first
     try {
-      return JSON.parse(content);
+      return JSON.parse(cleanedContent);
     } catch (e) {
       // Try to extract JSON from content
-      const startIdx = content.indexOf('{');
-      const endIdx = content.lastIndexOf('}');
+      const startIdx = cleanedContent.indexOf('{');
+      const endIdx = cleanedContent.lastIndexOf('}');
 
       if (startIdx !== -1 && endIdx > startIdx) {
-        const jsonStr = content.substring(startIdx, endIdx + 1);
+        const jsonStr = cleanedContent.substring(startIdx, endIdx + 1);
         try {
           return JSON.parse(jsonStr);
         } catch (e2) {
+          console.error('[AI] Failed to parse JSON:', cleanedContent);
           throw new Error('无法解析 AI 响应为 JSON');
         }
       }
+      console.error('[AI] No JSON found in response:', cleanedContent);
       throw new Error('无法解析 AI 响应为 JSON');
     }
   }

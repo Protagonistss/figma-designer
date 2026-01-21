@@ -18,7 +18,7 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({ data }) => {
       <JsonView
         value={data}
         style={vscodeTheme}
-        collapsed={2}
+        collapsed={10}
         displayDataTypes={false}
         shortenTextAfterLength={100}
         enableClipboard={true}

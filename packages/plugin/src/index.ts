@@ -1,7 +1,7 @@
 import { Processor } from './processor';
 import UI_HTML from '@figma-designer/ui/html';
 import { ConfigManager } from './config';
-import { buildPageAnalysisPrompt, buildHybridAnalysisPrompt } from '@figma-designer/ai';
+import { buildPageAnalysisPrompt, buildVisualOnlyPrompt } from '@figma-designer/ai';
 import { NodeMetadata, AnalysisMode, AnalysisConfig, DEFAULT_ANALYSIS_CONFIG, RawNodeTree } from '@figma-designer/shared';
 
 /**
@@ -87,7 +87,10 @@ async function main() {
     // 响应 UI 的配置请求
     if (msg.type === 'get-config') {
       const config = ConfigManager.getInstance().getConfig();
-      console.log('[Plugin] Sending config to UI:', config);
+      console.log('[Plugin] Sending config to UI:', {
+        ...config,
+        apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '(empty)'
+      });
       figma.ui.postMessage({
         type: 'config',
         payload: config
@@ -172,10 +175,23 @@ async function main() {
         
         // 根据模式选择 Prompt
         let prompt: string;
-        if (mode === 'hybrid' || mode === 'visual-only') {
-          prompt = buildHybridAnalysisPrompt(JSON.stringify(lastMetadata, null, 2), hasScreenshot);
+        if (mode === 'visual-only') {
+          // 纯视觉模式：只发送截图，不发送 metadata
+          prompt = buildVisualOnlyPrompt();
+        } else if (mode === 'hybrid') {
+          // 混合模式：同时发送 metadata 和截图
+          prompt = buildPageAnalysisPrompt({
+            pageType: 'auto',
+            hasScreenshot,
+            metadataJson: JSON.stringify(lastMetadata, null, 2)
+          });
         } else {
-          prompt = buildPageAnalysisPrompt(JSON.stringify(lastMetadata, null, 2));
+          // 纯结构模式：只发送 metadata
+          prompt = buildPageAnalysisPrompt({
+            pageType: 'table',
+            hasScreenshot: false,
+            metadataJson: JSON.stringify(lastMetadata, null, 2)
+          });
         }
         
         const inferenceResult = await requestAI(prompt, lastMetadata, hasScreenshot ? lastScreenshot! : undefined);

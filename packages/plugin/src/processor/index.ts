@@ -12,13 +12,18 @@ export class Processor {
   private screenshotCapture: ScreenshotCapture;
   
   constructor() {
-    this.extractor = new MetadataExtractor(6); // 提高层级以覆盖更多标签文本
+    this.extractor = new MetadataExtractor(10); // 提高层级以覆盖更多标签文本
     this.screenshotCapture = new ScreenshotCapture();
   }
   
   async extract(rootNode: SceneNode, config: AnalysisConfig = DEFAULT_ANALYSIS_CONFIG): Promise<ExtractResult> {
     console.log('[Processor] Extracting metadata...');
     const metadata = this.extractor.extractTree(rootNode);
+    
+    if (metadata === null) {
+      throw new Error('所选节点不包含任何有效内容（无文本或有效子节点）');
+    }
+    
     console.log('[Processor] Metadata extracted, nodes:', this.countNodes(metadata));
     
     let screenshot: string | undefined;

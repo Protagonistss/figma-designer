@@ -1,16 +1,18 @@
 {
   "name": "@figma-designer/ui",
   "version": "1.0.0",
+  "type": "module",
   "exports": {
-    "./html": "./dist/index.html"
+    "./html": {
+      "types": "./html.d.ts",
+      "default": "./dist/index.html"
+    }
   },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"
   },
   "dependencies": {
-    "@figma-designer/ai": "workspace:*",
-    "@figma-designer/shared": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.40",
     "classnames": "^2.5.1",
     "react": "^19.2.3",
@@ -18,6 +20,8 @@
     "react-zoom-pan-pinch": "3.7.0"
   },
   "devDependencies": {
+    "@figma-designer/ai": "workspace:*",
+    "@figma-designer/shared": "workspace:*",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
@@ -26,3 +30,4 @@
     "vite-plugin-singlefile": "^2.3.0"
   }
 }
+

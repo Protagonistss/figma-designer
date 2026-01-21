@@ -1,4 +1,17 @@
-// Prompt 模块导出
-// 当前只使用单次页面分析 Prompt
-export * from './page-analysis';
-export * from './hybrid-analysis';
+/**
+ * Prompt 模块统一导出
+ */
+
+// 类型导出
+export * from './types';
+
+// 模板引擎
+export * from './template-engine';
+
+// 构建器（主要 API）
+export * from './builders';
+
+// 子模块（高级用法）
+export * from './system';
+export * from './user';
+export * from './segments';

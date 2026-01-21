@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { AppConfig, Status, NodeMetadata, RawNodeTree } from '@figma-designer/shared';
 import * as SharedUtils from '@figma-designer/shared';
+import styles from './App.module.css';
 
 // --- Hooks & Services ---
 import { useConfig, useFigmaMessage, useAIRequest } from './hooks';
@@ -57,11 +58,15 @@ export default function App() {
   useFigmaMessage({
     onConfig: (payload) => {
       console.log('[UI] onConfig called with payload:', payload);
-      console.log('[UI] payload.apiKey:', payload?.apiKey ? '(exists)' : '(empty)');
+      console.log('[UI] payload.apiKey:', payload?.apiKey ? `${payload.apiKey.substring(0, 10)}...` : '(empty)');
+      console.log('[UI] payload.apiBaseUrl:', payload?.apiBaseUrl);
+      console.log('[UI] payload.model:', payload?.model);
       console.log('[UI] payload.availableModels:', payload?.availableModels);
       updateConfig(payload);
-      if (payload.apiKey) {
+      if (payload?.apiKey && payload.apiKey.trim() !== '') {
         setStatus({ type: 'success', text: '已加载本地配置' });
+      } else {
+        setStatus({ type: 'error', text: 'API Key 未配置，请在 .env 文件中配置 API_KEY' });
       }
     },
     onExtractResult: (payload) => {
@@ -117,7 +122,7 @@ export default function App() {
   // --- Render ---
 
   return (
-    <div className="app-container">
+    <div className={styles.container}>
       <Header
         config={config}
         models={models}
