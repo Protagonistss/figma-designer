@@ -29,6 +29,11 @@ export class ConfigManager {
         { value: 'GLM-4.6V-Flash', label: 'GLM-4.6V-Flash (视觉free)' }
       ]
     };
+    console.log('[ConfigManager] Initialized with config:', {
+      apiKey: this.config.apiKey ? `${this.config.apiKey.substring(0, 10)}...` : '(empty)',
+      apiBaseUrl: this.config.apiBaseUrl,
+      model: this.config.model
+    });
   }
 
   public static getInstance(): ConfigManager {

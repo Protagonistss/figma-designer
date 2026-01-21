@@ -36,10 +36,16 @@ export class AIService {
   async callAI(prompt: string, screenshot?: string): Promise<any> {
     const { apiKey, apiBaseUrl, model } = this.config;
 
-    if (!apiKey) {
+    console.log('[AIService] callAI with config:', {
+      apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : '(empty)',
+      apiBaseUrl,
+      model
+    });
+
+    if (!apiKey || apiKey.trim() === '') {
       throw new Error('请配置 API Key');
     }
-    if (!apiBaseUrl) {
+    if (!apiBaseUrl || apiBaseUrl.trim() === '') {
       throw new Error('API 地址未配置');
     }
 

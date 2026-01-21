@@ -27,6 +27,19 @@ export function useAIRequest(config: AppConfig) {
     systemPrompt: string,
     screenshotStr?: string
   ): Promise<any> => {
+    console.log('[useAIRequest] callOpenAI with config:', {
+      apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '(empty)',
+      apiBaseUrl: config.apiBaseUrl,
+      model: config.model
+    });
+    
+    if (!config.apiKey || config.apiKey.trim() === '') {
+      throw new Error('请配置 API Key');
+    }
+    if (!config.apiBaseUrl || config.apiBaseUrl.trim() === '') {
+      throw new Error('API 地址未配置');
+    }
+    
     const aiService = createAIService(config);
     return aiService.callAI(systemPrompt, screenshotStr);
   }, [config]);

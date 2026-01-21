@@ -87,7 +87,10 @@ async function main() {
     // 响应 UI 的配置请求
     if (msg.type === 'get-config') {
       const config = ConfigManager.getInstance().getConfig();
-      console.log('[Plugin] Sending config to UI:', config);
+      console.log('[Plugin] Sending config to UI:', {
+        ...config,
+        apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '(empty)'
+      });
       figma.ui.postMessage({
         type: 'config',
         payload: config

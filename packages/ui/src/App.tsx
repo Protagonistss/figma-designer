@@ -58,11 +58,15 @@ export default function App() {
   useFigmaMessage({
     onConfig: (payload) => {
       console.log('[UI] onConfig called with payload:', payload);
-      console.log('[UI] payload.apiKey:', payload?.apiKey ? '(exists)' : '(empty)');
+      console.log('[UI] payload.apiKey:', payload?.apiKey ? `${payload.apiKey.substring(0, 10)}...` : '(empty)');
+      console.log('[UI] payload.apiBaseUrl:', payload?.apiBaseUrl);
+      console.log('[UI] payload.model:', payload?.model);
       console.log('[UI] payload.availableModels:', payload?.availableModels);
       updateConfig(payload);
-      if (payload.apiKey) {
+      if (payload?.apiKey && payload.apiKey.trim() !== '') {
         setStatus({ type: 'success', text: '已加载本地配置' });
+      } else {
+        setStatus({ type: 'error', text: 'API Key 未配置，请在 .env 文件中配置 API_KEY' });
       }
     },
     onExtractResult: (payload) => {
