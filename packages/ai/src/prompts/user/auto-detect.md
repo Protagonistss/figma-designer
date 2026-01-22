@@ -21,11 +21,35 @@
 {
   "pageType": "table",
   "pageTitle": "页面标题",
-  "regions": [...],
-  "search": { "fields": [...] },
-  "table": { "columns": [...], "rowActions": [...] },
-  "toolbar": { "actions": [...] },
-  "pagination": { "enabled": true }
+  "regions": [
+    {
+      "nodeId": "节点ID（可选）",
+      "role": "SearchArea|ActionGroup|DataGrid|PaginationBar",
+      "confidence": 0.0-1.0,
+      "visualEvidence": "简述识别依据（仅视觉模式）"
+    }
+  ],
+  "search": {
+    "fields": [
+      { "label": "字段标签", "name": "fieldName", "type": "input|select|date|dateRange" }
+    ]
+  },
+  "table": {
+    "columns": [
+      { "title": "列标题", "dataIndex": "fieldName", "width": 100, "align": "left|center|right" }
+    ],
+    "rowActions": [
+      { "label": "操作名", "type": "primary|default|danger" }
+    ]
+  },
+  "toolbar": {
+    "actions": [
+      { "label": "按钮名", "type": "primary|default", "icon": "plus|export|refresh" }
+    ]
+  },
+  "pagination": {
+    "enabled": true
+  }
 }
 ```
 
@@ -34,9 +58,31 @@
 {
   "pageType": "form",
   "pageTitle": "页面标题",
-  "regions": [...],
-  "sections": [{ "title": "...", "fields": [...] }],
-  "actions": [...]
+  "regions": [
+    {
+      "nodeId": "节点ID（可选）",
+      "role": "Header|FormSection|FormActions",
+      "confidence": 0.0-1.0,
+      "visualEvidence": "简述识别依据（仅视觉模式）"
+    }
+  ],
+  "sections": [
+    {
+      "title": "区块标题（可选）",
+      "fields": [
+        {
+          "label": "字段标签",
+          "name": "fieldName",
+          "type": "input|select|textarea|date|number|switch|radio|checkbox",
+          "required": true,
+          "placeholder": "占位文本（可选）"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    { "label": "按钮名", "type": "primary|default", "icon": "save|close" }
+  ]
 }
 ```
 
@@ -45,8 +91,26 @@
 {
   "pageType": "dashboard",
   "pageTitle": "页面标题",
-  "regions": [...],
-  "stats": [...],
-  "charts": [...]
+  "regions": [
+    {
+      "nodeId": "节点ID（可选）",
+      "role": "Header|StatCard|ChartArea|DataGrid",
+      "confidence": 0.0-1.0,
+      "visualEvidence": "简述识别依据（仅视觉模式）"
+    }
+  ],
+  "stats": [
+    {
+      "title": "指标名称",
+      "valueType": "number|currency|percent"
+    }
+  ],
+  "charts": [
+    {
+      "title": "图表标题",
+      "chartType": "line|bar|pie|area|gauge",
+      "dataKeys": ["key1", "key2"]
+    }
+  ]
 }
 ```
