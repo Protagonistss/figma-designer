@@ -15,8 +15,10 @@
     ],
     "devAllowedDomains": [
       "http://localhost:7242",
+      "http://localhost:8000",
+      "http://localhost:5173",
       "https://open.bigmodel.cn"
     ],
-    "reasoning": "Access BigModel API for AI inference"
+    "reasoning": "Access BigModel API for AI inference and backend services"
   }
 }

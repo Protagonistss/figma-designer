@@ -6,7 +6,9 @@ function loadEnv() {
   const env: Record<string, string> = {
     'process.env.API_KEY': '""',
     'process.env.API_BASE_URL': '""',
-    'process.env.MODEL': '""'
+    'process.env.MODEL': '""',
+    'process.env.BACKEND_URL': '""',
+    'process.env.CHAT_URL': '""'
   };
   
   try {
@@ -52,7 +54,9 @@ function loadEnv() {
   console.log('[tsup] Final env values:', {
     'process.env.API_KEY': env['process.env.API_KEY'] !== '""' ? '(set)' : '(empty)',
     'process.env.API_BASE_URL': env['process.env.API_BASE_URL'] !== '""' ? '(set)' : '(empty)',
-    'process.env.MODEL': env['process.env.MODEL'] !== '""' ? '(set)' : '(empty)'
+    'process.env.MODEL': env['process.env.MODEL'] !== '""' ? '(set)' : '(empty)',
+    'process.env.BACKEND_URL': env['process.env.BACKEND_URL'] !== '""' ? '(set)' : '(empty)',
+    'process.env.CHAT_URL': env['process.env.CHAT_URL'] !== '""' ? '(set)' : '(empty)'
   });
   
   return env;

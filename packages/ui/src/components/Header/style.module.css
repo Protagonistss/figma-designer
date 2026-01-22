@@ -135,3 +135,22 @@
   cursor: not-allowed;
   filter: grayscale(100%);
 }
+
+.btnChat {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: #10b981;
+  border: none;
+  color: white;
+}
+
+.btnChat:hover {
+  background: #059669;
+}

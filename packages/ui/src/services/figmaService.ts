@@ -39,6 +39,10 @@ export class FigmaService {
   postCloseMessage(): void {
     this.postMessage('close');
   }
+
+  postBackendPayload(payload: any): void {
+    this.postMessage('send-backend-payload', { payload });
+  }
 }
 
 export const figmaService = new FigmaService();

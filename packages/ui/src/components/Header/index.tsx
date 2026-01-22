@@ -10,10 +10,12 @@ interface HeaderProps {
   isExtracting: boolean;
   isInferring: boolean;
   hasMetadata: boolean;
+  hasInferenceResult: boolean;
   onModelChange: (model: string) => void;
   onModeChange: (mode: 'structure-only' | 'hybrid' | 'visual-only') => void;
   onExtract: () => void;
   onInference: () => void;
+  onChat: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,10 +25,12 @@ export const Header: React.FC<HeaderProps> = ({
   isExtracting,
   isInferring,
   hasMetadata,
+  hasInferenceResult,
   onModelChange,
   onModeChange,
   onExtract,
-  onInference
+  onInference,
+  onChat
 }) => {
   return (
     <div className={styles.header}>
@@ -92,6 +96,14 @@ export const Header: React.FC<HeaderProps> = ({
           </svg>
           {isInferring ? '推断中...' : '推断结构'}
         </button>
+        {hasInferenceResult && (
+          <button className={styles.btnChat} onClick={onChat}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            对话
+          </button>
+        )}
       </div>
     </div>
   );

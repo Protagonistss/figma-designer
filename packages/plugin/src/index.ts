@@ -210,6 +210,61 @@ async function main() {
           payload: { message: (err as Error).message }
         });
       }
+    } else if (msg.type === 'send-backend-payload') {
+      const config = ConfigManager.getInstance().getConfig();
+      const backendUrl = config.backendUrl || 'http://localhost:8000';
+      const apiUrl = `${backendUrl}/figma/payload`;
+      const payload = msg.payload?.payload;
+      
+      if (!payload) {
+        figma.ui.postMessage({
+          type: 'backend-payload-error',
+          payload: { message: '没有要发送的数据' }
+        });
+        return;
+      }
+      
+      console.log('[Plugin] Sending payload to backend:', apiUrl);
+      
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payload: payload
+        })
+      })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+        }
+        return response.json().catch(() => ({}));
+      })
+      .then((result) => {
+        console.log('[Plugin] Successfully sent payload to backend:', result);
+        const token = result?.token;
+        const chatUrl = config.chatUrl || 'http://localhost:5173';
+        
+        figma.ui.postMessage({
+          type: 'backend-payload-result',
+          payload: {
+            ...result,
+            token,
+            chatUrl
+          }
+        });
+        figma.notify('推断数据已提交');
+      })
+      .catch((error) => {
+        console.error('[Plugin] Failed to send payload to backend:', error);
+        figma.ui.postMessage({
+          type: 'backend-payload-error',
+          payload: { message: error.message || '未知错误' }
+        });
+        figma.notify('提交失败: ' + (error.message || '未知错误'));
+      });
     } else if (msg.type === 'close') {
       figma.closePlugin();
     }

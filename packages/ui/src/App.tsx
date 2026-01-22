@@ -89,6 +89,27 @@ export default function App() {
     onInferenceError: (payload) => {
       setIsInferring(false);
       updateStatus('error', '推断失败: ' + (payload?.message || '未知错误'));
+    },
+    onBackendPayloadResult: (payload) => {
+      console.log('[App] Successfully sent inference data to backend:', payload);
+      updateStatus('success', '推断数据已提交');
+      
+      // 获取 token 并跳转到 chatUrl
+      const token = payload?.token;
+      const chatUrl = payload?.chatUrl || config.chatUrl || 'http://localhost:5173';
+      
+      if (token) {
+        const urlWithToken = `${chatUrl}?token=${encodeURIComponent(token)}`;
+        console.log('[App] Opening chat URL with token:', urlWithToken);
+        window.open(urlWithToken, '_blank');
+      } else {
+        console.warn('[App] No token received, opening chat URL without token');
+        window.open(chatUrl, '_blank');
+      }
+    },
+    onBackendPayloadError: (payload) => {
+      console.error('[App] Failed to send inference data to backend:', payload);
+      updateStatus('error', '提交失败: ' + (payload?.message || '未知错误'));
     }
   });
 
@@ -119,6 +140,20 @@ export default function App() {
     }
   }, [setModel, config.model]);
 
+  const handleChat = useCallback(() => {
+    if (!inferenceResult) {
+      console.warn('[App] No inference result to send');
+      updateStatus('error', '请先完成推断');
+      return;
+    }
+    
+    console.log('[App] Chat button clicked, sending data to backend via plugin');
+    updateStatus('loading', '正在提交推断数据...');
+    
+    // 通过插件主线程发送请求（避免 CSP 限制）
+    figmaService.postBackendPayload(inferenceResult);
+  }, [inferenceResult, updateStatus]);
+
   // --- Render ---
 
   return (
@@ -130,10 +165,12 @@ export default function App() {
         isExtracting={isExtracting}
         isInferring={isInferring}
         hasMetadata={!!metadata}
+        hasInferenceResult={!!inferenceResult}
         onModelChange={setModel}
         onModeChange={handleModeChange}
         onExtract={handleExtract}
         onInference={handleInference}
+        onChat={handleChat}
       />
 
       <ResultPanel

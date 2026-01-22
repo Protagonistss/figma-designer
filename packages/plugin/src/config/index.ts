@@ -10,7 +10,9 @@ declare const process: { env: Record<string, string | undefined> };
 const ENV_CONFIG = {
   apiKey: process.env.API_KEY || '',
   apiBaseUrl: process.env.API_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  model: process.env.MODEL || 'glm-4-flash'
+  model: process.env.MODEL || 'glm-4-flash',
+  backendUrl: process.env.BACKEND_URL || 'http://localhost:8000',
+  chatUrl: process.env.CHAT_URL || 'http://localhost:5173'
 };
 
 export class ConfigManager {
@@ -22,6 +24,8 @@ export class ConfigManager {
       apiKey: ENV_CONFIG.apiKey,
       apiBaseUrl: ENV_CONFIG.apiBaseUrl,
       model: ENV_CONFIG.model,
+      backendUrl: ENV_CONFIG.backendUrl,
+      chatUrl: ENV_CONFIG.chatUrl,
       availableModels: [
         { value: 'glm-4.7', label: 'GLM-4.7 (文本)' },
         { value: 'GLM-4.6V', label: 'GLM-4.6V (视觉)' },
@@ -32,7 +36,9 @@ export class ConfigManager {
     console.log('[ConfigManager] Initialized with config:', {
       apiKey: this.config.apiKey ? `${this.config.apiKey.substring(0, 10)}...` : '(empty)',
       apiBaseUrl: this.config.apiBaseUrl,
-      model: this.config.model
+      model: this.config.model,
+      backendUrl: this.config.backendUrl,
+      chatUrl: this.config.chatUrl
     });
   }
 

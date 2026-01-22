@@ -6,6 +6,8 @@ interface MessageHandlers {
   onExtractError?: (payload: any) => void;
   onInferenceResult?: (payload: any) => void;
   onInferenceError?: (payload: any) => void;
+  onBackendPayloadResult?: (payload: any) => void;
+  onBackendPayloadError?: (payload: any) => void;
 }
 
 export function useFigmaMessage(handlers: MessageHandlers) {
@@ -40,6 +42,12 @@ export function useFigmaMessage(handlers: MessageHandlers) {
           break;
         case 'inference-error':
           currentHandlers.onInferenceError?.(msg.payload);
+          break;
+        case 'backend-payload-result':
+          currentHandlers.onBackendPayloadResult?.(msg.payload);
+          break;
+        case 'backend-payload-error':
+          currentHandlers.onBackendPayloadError?.(msg.payload);
           break;
       }
     };
